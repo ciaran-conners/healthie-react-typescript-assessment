@@ -17,7 +17,7 @@ npm run build      # typecheck + production build
 | Concern | Choice | Why |
 | --- | --- | --- |
 | Build | Vite + React 19 + TypeScript (strict) | No backend needed, so no framework overhead |
-| Drag & drop | `@dnd-kit/core` + `@dnd-kit/sortable` | Headless, pointer/touch/keyboard sensors, screen-reader announcements; the app owns the data |
+| Drag & drop | `@dnd-kit/core` + `@dnd-kit/sortable` | Headless; mouse, touch (long-press, so swiping still scrolls) and keyboard sensors; screen-reader announcements; the app owns the data |
 | State | XState v5 | The board has mutually exclusive modes (see below) |
 | Data fetching | `fetch` + a small typed `gql()` helper | One read-only query; a GraphQL client's cache would compete with the machine as a source of truth |
 | Styling | Tailwind CSS v4 | |
@@ -32,7 +32,7 @@ src/
   api/
     gql.ts                        typed GraphQL-over-fetch helper (HTTP + GraphQL errors → throws)
     characters.ts                 Rick and Morty adapter: SearchCharacters implementation + cache
-  persistence/boardStorage.ts     load/save with shape validation
+  persistence/boardStorage.ts     load/save, validating untrusted stored data before use
   components/kanban/
     KanbanBoard.tsx               the public component
     boardMachine.ts               XState machine: modes + card data
@@ -88,8 +88,10 @@ handles *when* things may happen and `boardLogic.ts` handles *what* happens.
 - Cards can be dragged with the keyboard via the grip handle (Space to pick up, arrows to move, Space to
   drop, Escape to cancel), with custom announcements naming the card and column.
 - The character picker is an ARIA 1.2 combobox (arrow keys, Enter, Escape).
-- Modals trap focus by marking the rest of the page `inert` (unfocusable, unclickable and hidden from
-  assistive tech), and restore focus to the control that opened them.
+- Modals move focus to their first field, trap it by marking the rest of the page `inert`
+  (unfocusable, unclickable and hidden from assistive tech), and restore it to the control that
+  opened them on close. `inert` is the platform-native version of what dialog libraries do with focus
+  guards and `aria-hidden`; native `<dialog>` or Radix Dialog would be equally valid choices.
 - Completing a card is announced in a live region.
 - Under `prefers-reduced-motion`, the confetti is replaced by a static glow on the card.
 
