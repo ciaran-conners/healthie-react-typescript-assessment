@@ -1,5 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useId } from 'react'
 import { SortableCard } from './BoardCard'
 import type { Card, CardId, ColumnDef } from './types'
 
@@ -24,15 +25,15 @@ export function BoardColumn({
   onEdit,
   onDelete,
 }: BoardColumnProps) {
-  // The column itself is droppable so empty columns can receive cards.
+  // The list itself is droppable so empty columns can receive cards.
   const { setNodeRef } = useDroppable({ id: column.id })
-  const headingId = `column-${column.id}`
+  const headingId = useId()
 
   return (
     <section
       aria-labelledby={headingId}
-      className={`flex flex-col rounded-2xl bg-white/[0.03] p-3 ring-1 transition ${
-        isDropTarget ? 'ring-portal/50 bg-portal/[0.04]' : 'ring-white/10'
+      className={`flex flex-col rounded-2xl p-3 ring-1 transition ${
+        isDropTarget ? 'bg-portal/5 ring-portal/50' : 'bg-white/3 ring-white/10'
       }`}
     >
       <header className="mb-3 flex items-center justify-between px-1">
@@ -42,8 +43,9 @@ export function BoardColumn({
         >
           {column.title}
         </h2>
-        <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300" aria-label={`${cards.length} cards`}>
+        <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
           {cards.length}
+          <span className="sr-only"> {cards.length === 1 ? 'card' : 'cards'}</span>
         </span>
       </header>
 

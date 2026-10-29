@@ -68,6 +68,7 @@ describe('KanbanBoard', () => {
     expect(screen.getByRole('button', { name: 'Delete “Old title”' })).toBeDisabled()
 
     const title = dialog.getByLabelText('Title')
+    expect(title).toHaveFocus()
     await user.clear(title)
     await user.type(title, 'New title')
     await user.click(dialog.getByRole('button', { name: 'Change' }))
@@ -119,7 +120,7 @@ describe('KanbanBoard', () => {
     expect(column('Done').getByText('Saved card')).toBeInTheDocument()
   })
 
-  it('shows a retry option when the character search fails', async () => {
+  it('offers a keyboard-reachable retry when the character search fails', async () => {
     const search = vi
       .fn<SearchCharacters>()
       .mockRejectedValueOnce(new Error('Portal gun out of fluid'))
@@ -127,7 +128,12 @@ describe('KanbanBoard', () => {
     const { user } = renderBoard({ searchCharacters: search })
 
     await user.click(screen.getByRole('combobox'))
-    await user.click(await screen.findByRole('button', { name: 'Try again' }))
+    const retry = await screen.findByRole('button', { name: 'Try again' })
+    await user.tab()
+    expect(retry).toHaveFocus()
+    await user.keyboard('{Enter}')
+
     expect(await screen.findByRole('option', { name: /Rick Sanchez/ })).toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toHaveFocus()
   })
 })

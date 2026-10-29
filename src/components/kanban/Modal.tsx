@@ -1,32 +1,34 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+const FOCUSABLE =
+  'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+
 interface ModalProps {
   title: string
   onClose: () => void
   children: ReactNode
 }
 
+/** Moves focus to the first focusable element on open, traps it, and restores it on close. */
 export function Modal({ title, onClose, children }: ModalProps) {
   const titleId = useId()
-
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  // Hand focus back to whatever opened the modal (e.g. the card's edit button). Captured during
-  // render, because by the time an effect runs the opener may already be disabled (the board
-  // locks while a modal is open) and the browser will have moved focus to <body>.
+  // Captured during render: by the time an effect runs, the opener may already be disabled
+  // (the board locks while a modal is open) and focus will have fallen back to <body>.
   const [opener] = useState(() => document.activeElement as HTMLElement | null)
 
   useEffect(() => {
-    // Trap focus by making everything outside the modal `inert`: unfocusable, unclickable and
-    // hidden from assistive tech. Elements that were already inert are left alone.
+    const overlay = overlayRef.current
     const background = [...document.body.children].filter(
-      (el) => el !== overlayRef.current && !el.hasAttribute('inert'),
+      (el) => el !== overlay && !el.hasAttribute('inert'),
     )
     background.forEach((el) => el.setAttribute('inert', ''))
+    overlay?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
 
     return () => {
-      // Un-inert first: focus can't move into an inert subtree.
+      // Focus can't move into an inert subtree, so restore interactivity first.
       background.forEach((el) => el.removeAttribute('inert'))
       opener?.focus()
     }

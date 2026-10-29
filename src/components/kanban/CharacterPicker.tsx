@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from 'react'
+import { useId, useRef, useState } from 'react'
 import { inputClass } from './styles'
 import type { Character, SearchCharacters } from './types'
 import { useCharacterSearch } from './useCharacterSearch'
@@ -55,8 +55,6 @@ export function CharacterPicker({
           onClick={() => {
             onChange(null)
             setOpen(true)
-            // The input mounts on the next render.
-            requestAnimationFrame(() => inputRef.current?.focus())
           }}
         >
           Change
@@ -66,7 +64,13 @@ export function CharacterPicker({
   }
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      // Close only when focus leaves the whole picker, so the retry button stays reachable by Tab.
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false)
+      }}
+    >
       <input
         ref={inputRef}
         id={id}
@@ -74,6 +78,8 @@ export function CharacterPicker({
         role="combobox"
         autoComplete="off"
         placeholder="Search the multiverse…"
+        // Only true when mounting via "Change", so focus follows the user's intent.
+        autoFocus={open}
         aria-expanded={open}
         aria-controls={listboxId}
         aria-autocomplete="list"
@@ -87,7 +93,6 @@ export function CharacterPicker({
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault()
@@ -97,7 +102,6 @@ export function CharacterPicker({
             e.preventDefault()
             setActiveIndex(Math.max(active - 1, 0))
           } else if (e.key === 'Enter' && open) {
-            // Don't submit the surrounding form while choosing.
             e.preventDefault()
             if (characters[active]) select(characters[active])
           } else if (e.key === 'Escape' && open) {
@@ -109,62 +113,55 @@ export function CharacterPicker({
       />
 
       {open && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          aria-label="Characters"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg bg-slate-900 p-1 shadow-xl ring-1 ring-white/10"
-        >
-          {characters.map((character, index) => (
-            <li
-              key={character.id}
-              id={optionId(index)}
-              role="option"
-              aria-selected={index === active}
-              // mousedown + preventDefault keeps focus in the input so onBlur doesn't close us first.
-              onMouseDown={(e) => {
-                e.preventDefault()
-                select(character)
-              }}
-              onMouseEnter={() => setActiveIndex(index)}
-              className={`flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 ${
-                index === active ? 'bg-portal/15' : ''
-              }`}
-            >
-              <Avatar character={character} />
-              <span className="min-w-0 flex-1 truncate">{character.name}</span>
-              {character.species && <span className="text-xs text-slate-400">{character.species}</span>}
-            </li>
-          ))}
-          {isLoading && <StatusRow>Opening a portal…</StatusRow>}
-          {!isLoading && error && (
-            <StatusRow>
-              Couldn’t reach that dimension.{' '}
-              <button
-                type="button"
-                className="text-portal underline"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  retry()
-                }}
-              >
-                Try again
-              </button>
-            </StatusRow>
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg bg-slate-900 shadow-xl ring-1 ring-white/10">
+          {characters.length > 0 && (
+            <ul id={listboxId} role="listbox" aria-label="Characters" className="max-h-64 overflow-auto p-1">
+              {characters.map((character, index) => (
+                <li
+                  key={character.id}
+                  id={optionId(index)}
+                  role="option"
+                  aria-selected={index === active}
+                  // Keeps focus in the input; otherwise the blur would close the list before the click lands.
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    select(character)
+                  }}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  className={`flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 ${
+                    index === active ? 'bg-portal/15' : ''
+                  }`}
+                >
+                  <Avatar character={character} />
+                  <span className="min-w-0 flex-1 truncate">{character.name}</span>
+                  {character.species && <span className="text-xs text-slate-400">{character.species}</span>}
+                </li>
+              ))}
+            </ul>
           )}
-          {!isLoading && !error && characters.length === 0 && (
-            <StatusRow>Nobody by that name in this dimension.</StatusRow>
-          )}
-        </ul>
+          <div aria-live="polite" className="px-3 text-sm text-slate-400 empty:hidden">
+            {isLoading && <p className="py-2">Opening a portal…</p>}
+            {!isLoading && error && (
+              <p className="py-2">
+                Couldn’t reach that dimension.{' '}
+                <button
+                  type="button"
+                  className="text-portal underline"
+                  onClick={() => {
+                    retry()
+                    inputRef.current?.focus()
+                  }}
+                >
+                  Try again
+                </button>
+              </p>
+            )}
+            {!isLoading && !error && characters.length === 0 && (
+              <p className="py-2">Nobody by that name in this dimension.</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
-  )
-}
-
-function StatusRow({ children }: { children: ReactNode }) {
-  return (
-    <li role="presentation" className="px-2 py-2 text-sm text-slate-400">
-      {children}
-    </li>
   )
 }
