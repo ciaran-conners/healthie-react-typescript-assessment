@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --color-portal: #97ce4c;
+  --color-portal-deep: #3f7d20;
+  --color-morty: #f0e14a;
+  --color-space: #090d1a;
+}
+
+@layer base {
+  body {
+    @apply bg-space font-sans text-slate-100 antialiased;
+    background-image:
+      radial-gradient(60rem 40rem at 85% -10%, rgb(151 206 76 / 0.12), transparent 60%),
+      radial-gradient(50rem 30rem at -10% 110%, rgb(68 196 230 / 0.1), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+}
