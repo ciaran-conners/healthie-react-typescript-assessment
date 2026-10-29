@@ -1,16 +1,30 @@
-import type { BoardData } from '../components/kanban/types'
+import type { BoardData, Card } from '../components/kanban/types'
 
 const STORAGE_KEY = 'interdimensional-kanban:v1'
 
-function isBoardData(value: unknown): value is BoardData {
-  if (typeof value !== 'object' || value === null) return false
-  const { cards, cardIdsByColumn } = value as Partial<BoardData>
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isCard(value: unknown): value is Card {
+  if (!isRecord(value) || !isRecord(value.character)) return false
   return (
-    typeof cards === 'object' &&
-    cards !== null &&
-    typeof cardIdsByColumn === 'object' &&
-    cardIdsByColumn !== null &&
-    Object.values(cardIdsByColumn).every(Array.isArray)
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.description === 'string' &&
+    typeof value.character.name === 'string' &&
+    typeof value.character.image === 'string'
+  )
+}
+
+// Storage is untrusted (older versions, manual edits), so validate before rendering from it.
+function isBoardData(value: unknown): value is BoardData {
+  if (!isRecord(value) || !isRecord(value.cards) || !isRecord(value.cardIdsByColumn)) return false
+  return (
+    Object.values(value.cards).every(isCard) &&
+    Object.values(value.cardIdsByColumn).every(
+      (ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string'),
+    )
   )
 }
 
@@ -29,6 +43,6 @@ export function saveBoard(board: BoardData): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(board))
   } catch {
-    // Storage can be full or blocked (e.g. private mode); the board still works in memory.
+    // Full or blocked storage (e.g. private mode) shouldn't break the board; it keeps working in memory.
   }
 }

@@ -1,19 +1,17 @@
-export const RICK_AND_MORTY_GRAPHQL_URL = 'https://rickandmortyapi.com/graphql'
-
 interface GraphQLResponse<T> {
   data?: T
   errors?: { message: string }[]
 }
 
 /**
- * Minimal typed GraphQL client. GraphQL usually reports errors with a 200 status
- * and an `errors` array, so both transport and GraphQL errors are turned into throws.
+ * Minimal typed GraphQL-over-fetch client. GraphQL typically reports errors with a 200 status
+ * and an `errors` array, so both transport and GraphQL errors become throws.
  */
 export async function gql<T>(
+  url: string,
   query: string,
   variables?: Record<string, unknown>,
   signal?: AbortSignal,
-  url = RICK_AND_MORTY_GRAPHQL_URL,
 ): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
