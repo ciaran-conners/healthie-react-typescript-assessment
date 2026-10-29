@@ -18,3 +18,90 @@
     min-height: 100dvh;
   }
 }
+
+/* ---- Celebration: pure CSS, driven by per-piece custom properties set inline ---- */
+
+.confetti {
+  position: fixed;
+  left: var(--x);
+  top: var(--y);
+  z-index: 60;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: var(--w);
+  height: var(--h);
+  border-radius: 2px;
+  background: var(--color);
+  opacity: 0;
+  animation: confetti-burst var(--duration) var(--delay) forwards;
+}
+
+/* Two segments: a fast ease-out burst, then an ease-in fall that reads as gravity. */
+@keyframes confetti-burst {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.4);
+    animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(calc(var(--spin) * 0.4)) scale(1);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx) * 1.35), calc(-50% + var(--dy) + var(--fall))) rotate(var(--spin)) scale(0.8);
+  }
+}
+
+.portal-ring {
+  position: absolute;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 3px solid var(--color-portal);
+  box-shadow:
+    0 0 24px var(--color-portal),
+    inset 0 0 18px var(--color-portal);
+  animation: portal-ring 900ms ease-out forwards;
+}
+
+@keyframes portal-ring {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(5) rotate(200deg);
+  }
+}
+
+.portal-glow {
+  animation: portal-glow 1.6s ease-out;
+}
+
+@keyframes portal-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(151 206 76 / 0.9);
+  }
+  35% {
+    box-shadow:
+      0 0 0 4px rgb(151 206 76 / 0.5),
+      0 0 36px rgb(151 206 76 / 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Reduced motion: no flying pieces, just the (non-moving) glow on the card. */
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece,
+  .portal-ring {
+    display: none;
+  }
+}

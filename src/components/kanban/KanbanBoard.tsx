@@ -18,6 +18,7 @@ import { CardView } from './BoardCard'
 import { findColumnOf } from './boardLogic'
 import { boardMachine, type Point } from './boardMachine'
 import { CardForm } from './CardForm'
+import { Confetti } from './Confetti'
 import { Modal } from './Modal'
 import { dangerButton, secondaryButton } from './styles'
 import { DEFAULT_COLUMNS, type BoardData, type ColumnDef, type SearchCharacters } from './types'
@@ -89,6 +90,7 @@ export function KanbanBoard({
   const activeCard = activeId ? board.cards[activeId] : null
   const editingCard = editingId ? board.cards[editingId] : null
   const deletingCard = deletingId ? board.cards[deletingId] : null
+  const celebratedCard = celebration ? board.cards[celebration.cardId] : null
   const cardCount = Object.keys(board.cards).length
 
   return (
@@ -179,6 +181,15 @@ export function KanbanBoard({
         </Modal>
       )}
 
+      {celebration && (
+        <Confetti
+          key={celebration.key}
+          origin={celebration.origin ?? { x: window.innerWidth / 2, y: window.innerHeight / 3 }}
+        />
+      )}
+      <p className="sr-only" aria-live="polite">
+        {celebratedCard ? `${celebratedCard.title} is done. Wubba lubba dub dub!` : ''}
+      </p>
     </div>
   )
 }
