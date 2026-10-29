@@ -7,7 +7,6 @@ export interface Character {
   name: string
   image: string
   species?: string
-  status?: string
 }
 
 export interface Card {
@@ -31,11 +30,17 @@ export interface BoardData {
   cardIdsByColumn: Record<ColumnId, CardId[]>
 }
 
-/** The editable fields of a card, shared by the create and edit forms. */
 export interface CardDraft {
   title: string
   description: string
   character: Character | null
+}
+
+export type CompleteDraft = CardDraft & { character: Character }
+
+export interface Point {
+  x: number
+  y: number
 }
 
 export type SearchCharacters = (query: string, signal: AbortSignal) => Promise<Character[]>

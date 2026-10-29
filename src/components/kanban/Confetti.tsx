@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import type { Point } from './boardMachine'
+import type { Point } from './types'
 
 const COLORS = ['#97ce4c', '#f0e14a', '#44c4e6', '#f4a1c9', '#ffffff']
 
@@ -23,7 +23,7 @@ function makePieces(count: number) {
   })
 }
 
-/** A one-shot burst. The board mounts it per celebration (keyed), so it never needs to clean itself up. */
+/** One-shot burst; the board remounts it (by key) per celebration, so it never resets itself. */
 export function Confetti({ origin, pieceCount = 56 }: { origin: Point; pieceCount?: number }) {
   const [pieces] = useState(() => makePieces(pieceCount))
 
@@ -32,7 +32,6 @@ export function Confetti({ origin, pieceCount = 56 }: { origin: Point; pieceCoun
       className="confetti"
       style={{ '--x': `${origin.x}px`, '--y': `${origin.y}px` } as CSSProperties}
       aria-hidden="true"
-      data-testid="confetti"
     >
       <span className="portal-ring" />
       {pieces.map((style, i) => (

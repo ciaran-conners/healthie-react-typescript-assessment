@@ -1,8 +1,8 @@
 import { useId, useState, type FormEvent } from 'react'
-import { isCompleteDraft, type CompleteDraft } from './boardLogic'
+import { isCompleteDraft } from './boardLogic'
 import { CharacterPicker } from './CharacterPicker'
 import { inputClass, primaryButton, secondaryButton } from './styles'
-import type { CardDraft, SearchCharacters } from './types'
+import type { CardDraft, CompleteDraft, SearchCharacters } from './types'
 
 const EMPTY_DRAFT: CardDraft = { title: '', description: '', character: null }
 
@@ -12,10 +12,8 @@ interface CardFormProps {
   submitLabel: string
   initialDraft?: CardDraft
   onCancel?: () => void
-  /** Clear the fields after a successful submit (the "create" form). */
   resetOnSubmit?: boolean
   disabled?: boolean
-  autoFocus?: boolean
 }
 
 export function CardForm({
@@ -26,7 +24,6 @@ export function CardForm({
   onCancel,
   resetOnSubmit = false,
   disabled = false,
-  autoFocus = false,
 }: CardFormProps) {
   const ids = { title: useId(), description: useId(), character: useId() }
   const errorIds = { title: useId(), character: useId() }
@@ -62,9 +59,8 @@ export function CardForm({
             id={ids.title}
             type="text"
             maxLength={80}
-            autoFocus={autoFocus}
             value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
             aria-invalid={(showErrors && !!errors.title) || undefined}
             aria-describedby={showErrors && errors.title ? errorIds.title : undefined}
             className={inputClass(showErrors && !!errors.title)}
@@ -82,7 +78,7 @@ export function CardForm({
             rows={3}
             maxLength={500}
             value={draft.description}
-            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
             className={`${inputClass()} resize-y`}
           />
         </div>
@@ -94,7 +90,7 @@ export function CardForm({
           <CharacterPicker
             id={ids.character}
             value={draft.character}
-            onChange={(character) => setDraft({ ...draft, character })}
+            onChange={(character) => setDraft((d) => ({ ...d, character }))}
             searchCharacters={searchCharacters}
             invalid={showErrors && !!errors.character}
             describedBy={showErrors && errors.character ? errorIds.character : undefined}

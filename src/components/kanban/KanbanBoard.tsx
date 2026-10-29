@@ -3,7 +3,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type Announcements,
@@ -12,25 +13,25 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useMachine } from '@xstate/react'
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useEffectEvent, useId, type CSSProperties } from 'react'
 import { BoardColumn } from './BoardColumn'
 import { CardView } from './BoardCard'
 import { findColumnOf } from './boardLogic'
-import { boardMachine, type Point } from './boardMachine'
+import { boardMachine } from './boardMachine'
 import { CardForm } from './CardForm'
 import { Confetti } from './Confetti'
 import { Modal } from './Modal'
 import { dangerButton, secondaryButton } from './styles'
-import { DEFAULT_COLUMNS, type BoardData, type ColumnDef, type SearchCharacters } from './types'
+import { DEFAULT_COLUMNS, type BoardData, type ColumnDef, type Point, type SearchCharacters } from './types'
 
 export interface KanbanBoardProps {
-  /** Injected data source for the character picker; the board knows nothing about the API behind it. */
+  /** Data source for the character picker; the board is agnostic to the API behind it. */
   searchCharacters: SearchCharacters
   /** Read once on mount, like `defaultValue`. */
   columns?: ColumnDef[]
   /** Read once on mount, like `defaultValue`. */
   initialBoard?: BoardData
-  /** Called with the full board after every committed change (not on every drag frame). */
+  /** Receives the full board after each committed change (not on every drag frame). */
   onChange?: (board: BoardData) => void
 }
 
@@ -48,30 +49,31 @@ export function KanbanBoard({
   const [snapshot, send, actorRef] = useMachine(boardMachine, { input: { columns, board: initialBoard } })
   const { board, activeId, editingId, deletingId, celebration } = snapshot.context
   const columnDefs = snapshot.context.columns
+  const formHeadingId = useId()
 
   const isIdle = snapshot.matches({ interaction: 'idle' })
   const isDragging = snapshot.matches({ interaction: 'dragging' })
-  // Editing and confirming a delete lock the board; dragging only locks the card actions.
+  // Modals lock dragging; a drag in progress only locks the card actions.
   const dragLocked = !isIdle && !isDragging
 
-  // Emit committed board changes. Mid-drag previews are skipped; a cancelled drag restores
-  // the original reference, so it produces no emission either.
-  const onChangeRef = useRef(onChange)
-  useEffect(() => {
-    onChangeRef.current = onChange
-  })
+  // Mid-drag previews aren't emitted, and a cancelled drag restores the original reference,
+  // so only committed changes reach onChange.
+  const emitChange = useEffectEvent((next: BoardData) => onChange?.(next))
   useEffect(() => {
     let last = actorRef.getSnapshot().context.board
     const subscription = actorRef.subscribe((next) => {
       if (next.matches({ interaction: 'dragging' }) || next.context.board === last) return
       last = next.context.board
-      onChangeRef.current?.(last)
+      emitChange(last)
     })
     return () => subscription.unsubscribe()
   }, [actorRef])
 
+  // Mouse: a small distance threshold keeps button clicks working.
+  // Touch: a long press, so swiping still scrolls the page.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
@@ -96,14 +98,14 @@ export function KanbanBoard({
   return (
     <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
       <section
-        aria-labelledby="new-card-heading"
-        className="rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10 lg:sticky lg:top-6"
+        aria-labelledby={formHeadingId}
+        className="rounded-2xl bg-white/3 p-5 ring-1 ring-white/10 lg:sticky lg:top-6"
       >
-        <h2 id="new-card-heading" className="mb-4 text-lg font-semibold">
+        <h2 id={formHeadingId} className="mb-4 text-lg font-semibold">
           New card
         </h2>
         <CardForm
-          submitLabel="Add to To Do"
+          submitLabel={`Add to ${columnDefs[0]?.title ?? 'board'}`}
           searchCharacters={searchCharacters}
           onSubmit={(draft) => send({ type: 'CREATE', draft })}
           resetOnSubmit
@@ -160,7 +162,6 @@ export function KanbanBoard({
             initialDraft={editingCard}
             onSubmit={(draft) => send({ type: 'SAVE', draft })}
             onCancel={() => send({ type: 'CANCEL' })}
-            autoFocus
           />
         </Modal>
       )}
@@ -171,7 +172,7 @@ export function KanbanBoard({
             “{deletingCard.title}” will be sent to a dimension it can’t come back from.
           </p>
           <div className="flex justify-end gap-2">
-            <button type="button" autoFocus onClick={() => send({ type: 'CANCEL' })} className={secondaryButton}>
+            <button type="button" onClick={() => send({ type: 'CANCEL' })} className={secondaryButton}>
               Cancel
             </button>
             <button type="button" onClick={() => send({ type: 'CONFIRM' })} className={dangerButton}>

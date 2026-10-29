@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { boardMachine, CELEBRATION_MS } from './boardMachine'
-import { DEFAULT_COLUMNS, type CardDraft } from './types'
+import { DEFAULT_COLUMNS, type CompleteDraft } from './types'
 
 const rick = { id: '1', name: 'Rick Sanchez', image: 'rick.png' }
-const draft = (title: string): CardDraft => ({ title, description: '', character: rick })
+const draft = (title: string): CompleteDraft => ({ title, description: '', character: rick })
 
 function startBoard() {
   const actor = createActor(boardMachine, { input: { columns: DEFAULT_COLUMNS } }).start()
@@ -24,7 +24,8 @@ describe('boardMachine', () => {
     const { actor, create, columns } = startBoard()
     create('Get Schwifty')
     actor.send({ type: 'CREATE', draft: { title: '  ', description: '', character: rick } })
-    actor.send({ type: 'CREATE', draft: { title: 'No character', description: '', character: null } })
+    // Bypasses the type system on purpose: the guard is the runtime backstop.
+    actor.send({ type: 'CREATE', draft: { title: 'No character', description: '', character: null } as never })
     expect(columns().todo).toHaveLength(1)
   })
 

@@ -1,10 +1,9 @@
-import type { BoardData, Card, CardDraft, CardId, Character, ColumnDef, ColumnId } from './types'
+import type { BoardData, Card, CardDraft, CardId, ColumnDef, ColumnId, CompleteDraft } from './types'
 
-// Pure board operations. The state machine calls these from its actions,
-// which keeps the machine about *when* things can happen, and this file about *what* happens.
-// Every function returns the same reference when nothing changed.
+// Pure board operations, called from the state machine's actions. Each returns the same
+// reference when nothing changed, which is how the board detects real changes.
 
-export function emptyBoard(columns: ColumnDef[]): BoardData {
+function emptyBoard(columns: ColumnDef[]): BoardData {
   return {
     cards: {},
     cardIdsByColumn: Object.fromEntries(columns.map((column) => [column.id, []])),
@@ -113,8 +112,13 @@ export function removeCard(board: BoardData, id: CardId): BoardData {
   }
 }
 
-export type CompleteDraft = CardDraft & { character: Character }
-
 export function isCompleteDraft(draft: CardDraft): draft is CompleteDraft {
   return draft.title.trim().length > 0 && draft.character !== null
+}
+
+// crypto.randomUUID is only available in secure contexts, so plain-http LAN access needs a fallback.
+export function createId(): string {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }

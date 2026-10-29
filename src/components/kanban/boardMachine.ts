@@ -1,6 +1,7 @@
 import { assign, raise, setup } from 'xstate'
 import {
   addCard,
+  createId,
   findColumnOf,
   isCompleteDraft,
   moveCard,
@@ -8,18 +9,13 @@ import {
   removeCard,
   updateCard,
 } from './boardLogic'
-import type { BoardData, CardDraft, CardId, ColumnDef, ColumnId } from './types'
-
-export interface Point {
-  x: number
-  y: number
-}
+import type { BoardData, CardId, ColumnDef, ColumnId, CompleteDraft, Point } from './types'
 
 export interface Celebration {
   cardId: CardId
-  /** Viewport coordinates of the drop, so the confetti bursts from where the card landed. */
+  /** Viewport coordinates of the drop. */
   origin: Point | null
-  /** Bumped on every celebration so back-to-back drops restart the animation. */
+  /** Bumped on every celebration so back-to-back drops remount the animation. */
   key: number
 }
 
@@ -35,13 +31,13 @@ export interface BoardContext {
 }
 
 export type BoardEvent =
-  | { type: 'CREATE'; draft: CardDraft }
+  | { type: 'CREATE'; draft: CompleteDraft }
   | { type: 'DRAG_START'; cardId: CardId }
   | { type: 'DRAG_OVER'; overId: string }
   | { type: 'DRAG_END'; overId: string | null; origin: Point | null }
   | { type: 'DRAG_CANCEL' }
   | { type: 'EDIT'; cardId: CardId }
-  | { type: 'SAVE'; draft: CardDraft }
+  | { type: 'SAVE'; draft: CompleteDraft }
   | { type: 'DELETE'; cardId: CardId }
   | { type: 'CONFIRM' }
   | { type: 'CANCEL' }
@@ -59,10 +55,9 @@ function isCelebrateColumn(columns: ColumnDef[], columnId: string | undefined) {
 }
 
 /**
- * Two parallel regions:
- * - `interaction` holds the mutually exclusive user modes. An event that a mode doesn't
- *   list is simply ignored, which is how e.g. "can't drag while editing" is enforced.
- * - `celebration` is independent so the confetti never blocks the next interaction.
+ * `interaction` holds the mutually exclusive user modes; an event a mode doesn't handle is
+ * ignored, which is how e.g. "can't drag while editing" is enforced. `celebration` runs in
+ * parallel so the confetti never blocks the next interaction.
  */
 export const boardMachine = setup({
   types: {
@@ -101,21 +96,18 @@ export const boardMachine = setup({
             CREATE: {
               guard: ({ event, context }) => isCompleteDraft(event.draft) && context.columns.length > 0,
               actions: assign({
-                board: ({ context, event }) => {
-                  const draft = event.draft
-                  if (!isCompleteDraft(draft)) return context.board
-                  return addCard(
+                board: ({ context, event }) =>
+                  addCard(
                     context.board,
                     {
-                      id: crypto.randomUUID(),
-                      title: draft.title.trim(),
-                      description: draft.description.trim(),
-                      character: draft.character,
+                      id: createId(),
+                      title: event.draft.title.trim(),
+                      description: event.draft.description.trim(),
+                      character: event.draft.character,
                       createdAt: Date.now(),
                     },
                     context.columns[0].id,
-                  )
-                },
+                  ),
               }),
             },
             DRAG_START: {
@@ -141,8 +133,8 @@ export const boardMachine = setup({
 
         dragging: {
           on: {
-            // Only cross-column moves are applied live; dnd-kit animates reordering
-            // within a column on its own, and that is committed on drop.
+            // Only cross-column moves are applied live; dnd-kit animates in-column
+            // reordering itself, and that is committed on drop.
             DRAG_OVER: {
               actions: assign({
                 board: ({ context, event }) => {
@@ -186,15 +178,12 @@ export const boardMachine = setup({
               target: 'idle',
               actions: [
                 assign({
-                  board: ({ context, event }) => {
-                    const draft = event.draft
-                    if (!isCompleteDraft(draft)) return context.board
-                    return updateCard(context.board, context.editingId!, {
-                      title: draft.title.trim(),
-                      description: draft.description.trim(),
-                      character: draft.character,
-                    })
-                  },
+                  board: ({ context, event }) =>
+                    updateCard(context.board, context.editingId!, {
+                      title: event.draft.title.trim(),
+                      description: event.draft.description.trim(),
+                      character: event.draft.character,
+                    }),
                 }),
                 'clearEditing',
               ],
@@ -221,8 +210,7 @@ export const boardMachine = setup({
     celebration: {
       initial: 'quiet',
       on: {
-        // Every drop raises CELEBRATE; this guard decides whether it's worth a party:
-        // the card must have *arrived* in a celebrate column, not just been reordered inside one.
+        // Raised on every drop; only a card *arriving* in a celebrate column counts.
         CELEBRATE: {
           guard: ({ context, event }) =>
             isCelebrateColumn(context.columns, findColumnOf(context.board, event.cardId)) &&

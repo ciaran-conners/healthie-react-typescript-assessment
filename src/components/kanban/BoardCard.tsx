@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { KeyboardEventHandler, PointerEventHandler, ReactNode } from 'react'
+import type { KeyboardEventHandler, MouseEventHandler, ReactNode, TouchEventHandler } from 'react'
 import { CheckIcon, GripIcon, PencilIcon, TrashIcon } from './icons'
 import type { Card } from './types'
 
@@ -8,13 +8,12 @@ interface CardViewProps {
   card: Card
   done?: boolean
   celebrating?: boolean
-  /** Rendered as the floating copy under the pointer while dragging. */
+  /** The floating copy that follows the pointer while dragging. */
   overlay?: boolean
   handle?: ReactNode
   actions?: ReactNode
 }
 
-/** Purely presentational, so it can be shared by the sortable card and the drag overlay. */
 export function CardView({ card, done, celebrating, overlay, handle, actions }: CardViewProps) {
   return (
     <article
@@ -78,19 +77,19 @@ export function SortableCard({
 }: SortableCardProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, disabled: dragDisabled })
-  // dnd-kit types listeners loosely (Record<string, Function>); these are the two activators it registers.
-  const onPointerDown = listeners?.onPointerDown as PointerEventHandler | undefined
+  // dnd-kit types listeners as Record<string, Function>; these are the activators of the
+  // sensors registered in KanbanBoard. Mouse and touch drags start anywhere on the card, but
+  // keyboard drags only from the handle, so Enter on Edit/Delete never picks the card up.
+  const onMouseDown = listeners?.onMouseDown as MouseEventHandler | undefined
+  const onTouchStart = listeners?.onTouchStart as TouchEventHandler | undefined
   const onKeyDown = listeners?.onKeyDown as KeyboardEventHandler | undefined
 
   return (
     <li
       ref={setNodeRef}
-      data-card-id={card.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      // Pointer drags work from anywhere on the card (the sensor's distance threshold keeps
-      // button clicks working); keyboard drags start from the dedicated handle, so pressing
-      // Enter on Edit/Delete never picks the card up.
-      onPointerDown={onPointerDown}
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
       className={`touch-manipulation select-none ${isDragging ? 'opacity-30' : ''} ${
         dragDisabled ? '' : 'cursor-grab active:cursor-grabbing'
       }`}
@@ -112,8 +111,7 @@ export function SortableCard({
           </button>
         }
         actions={
-          // Floats over the card so it doesn't steal title width; revealed on hover/focus
-          // for mouse users and always visible on touch.
+          // Floats over the title rather than reserving width; always visible on touch.
           <div className="absolute top-2 right-2 flex gap-0.5 rounded-lg bg-slate-800 shadow-sm transition pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100">
             <IconButton label={`Edit “${card.title}”`} onClick={onEdit} disabled={actionsDisabled}>
               <PencilIcon />
