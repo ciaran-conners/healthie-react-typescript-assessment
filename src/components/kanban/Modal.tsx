@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 interface ModalProps {
@@ -10,14 +10,31 @@ interface ModalProps {
 export function Modal({ title, onClose, children }: ModalProps) {
   const titleId = useId()
 
+  const overlayRef = useRef<HTMLDivElement>(null)
+
   // Hand focus back to whatever opened the modal (e.g. the card's edit button). Captured during
   // render, because by the time an effect runs the opener may already be disabled (the board
   // locks while a modal is open) and the browser will have moved focus to <body>.
   const [opener] = useState(() => document.activeElement as HTMLElement | null)
-  useEffect(() => () => opener?.focus(), [opener])
+
+  useEffect(() => {
+    // Trap focus by making everything outside the modal `inert`: unfocusable, unclickable and
+    // hidden from assistive tech. Elements that were already inert are left alone.
+    const background = [...document.body.children].filter(
+      (el) => el !== overlayRef.current && !el.hasAttribute('inert'),
+    )
+    background.forEach((el) => el.setAttribute('inert', ''))
+
+    return () => {
+      // Un-inert first: focus can't move into an inert subtree.
+      background.forEach((el) => el.removeAttribute('inert'))
+      opener?.focus()
+    }
+  }, [opener])
 
   return createPortal(
     <div
+      ref={overlayRef}
       className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >

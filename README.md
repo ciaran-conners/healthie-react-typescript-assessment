@@ -88,7 +88,9 @@ handles *when* things may happen and `boardLogic.ts` handles *what* happens.
 - Cards can be dragged with the keyboard via the grip handle (Space to pick up, arrows to move, Space to
   drop, Escape to cancel), with custom announcements naming the card and column.
 - The character picker is an ARIA 1.2 combobox (arrow keys, Enter, Escape).
-- Modals restore focus to the control that opened them; completing a card is announced in a live region.
+- Modals trap focus by marking the rest of the page `inert` (unfocusable, unclickable and hidden from
+  assistive tech), and restore focus to the control that opened them.
+- Completing a card is announced in a live region.
 - Under `prefers-reduced-motion`, the confetti is replaced by a static glow on the card.
 
 ## Possible next steps
@@ -96,4 +98,3 @@ handles *when* things may happen and `boardLogic.ts` handles *what* happens.
 - Controlled mode (`cards` prop) for parent-owned state, undo/redo or server sync.
 - Pagination / infinite scroll in the character picker (the adapter is the place for TanStack Query).
 - Filtering the board by character or species.
-- A focus trap in the modal (focus is set and restored, but Tab can currently leave it).

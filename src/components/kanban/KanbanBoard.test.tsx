@@ -82,6 +82,21 @@ describe('KanbanBoard', () => {
     expect(within(card).getByText(/Mr\. Poopybutthole/)).toBeInTheDocument()
   })
 
+  it('makes the rest of the page inert while a modal is open', async () => {
+    const { user } = renderBoard()
+    await createCard(user, 'Trapped', 'rick')
+    const page = screen.getByRole('region', { name: 'New card' }).closest('body > *')!
+
+    await user.click(screen.getByRole('button', { name: 'Edit “Trapped”' }))
+    const overlay = screen.getByRole('dialog').closest('body > *')!
+    expect(page).toHaveAttribute('inert')
+    expect(overlay).not.toHaveAttribute('inert')
+
+    await user.keyboard('{Escape}')
+    expect(page).not.toHaveAttribute('inert')
+    expect(screen.getByRole('button', { name: 'Edit “Trapped”' })).toHaveFocus()
+  })
+
   it('deletes a card only after confirmation', async () => {
     const { user, column } = renderBoard()
     await createCard(user, 'Doomed', 'rick')
