@@ -1,6 +1,6 @@
 # Interdimensional Kanban
 
-**Live demo: https://healthie-react-typescript-assessmen.vercel.app**
+**Live demo: https://ciaran-martin-conners-kanban.vercel.app**
 
 A frontend-only Kanban board (To Do / Doing / Done) where every card is assigned a character from the
 [Rick and Morty GraphQL API](https://rickandmortyapi.com/graphql). You can create, edit and delete
