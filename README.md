@@ -27,10 +27,10 @@ npm run dev          # http://localhost:5173
 
 | Requirement | Implementation |
 | --- | --- |
-| Three columns: To Do, Doing, Done | Columns are data (`DEFAULT_COLUMNS` in `types.ts`), rendered by `BoardColumn` |
-| Fetch characters from the Rick and Morty GraphQL API | `api/gql.ts` + `api/characters.ts`, used for a debounced, cancellable search in `CharacterPicker` |
+| Three columns: To Do, Doing, Done | Columns are data (`DEFAULT_COLUMNS` in `lib/board/columns.ts`), rendered by `BoardColumn` |
+| Fetch characters from the Rick and Morty GraphQL API | `lib/api/gql.ts` + `lib/api/characters.ts`, used for a debounced, cancellable search in `CharacterPicker` |
 | Items created via a form, each with a character | `CardForm` validates that a title and a character are present; the machine checks again as a backstop |
-| Draggable between columns, reorderable within one | dnd-kit sortable contexts per column; the pure `moveCard` in `boardLogic.ts` |
+| Draggable between columns, reorderable within one | dnd-kit sortable contexts per column; the pure `moveCard` in `lib/board/boardLogic.ts` |
 | Something delightful on Done | CSS-only confetti plus a portal ring from the drop point, and a glow on the card |
 | React + TypeScript | React 19, TypeScript in strict mode |
 
@@ -60,21 +60,29 @@ npm run dev          # http://localhost:5173
 ```
 src/
   App.tsx                         connects the board to the API adapter and localStorage
-  api/
-    gql.ts                        generic typed GraphQL-over-fetch helper
-    characters.ts                 Rick and Morty adapter implementing SearchCharacters, with a cache
-  persistence/
-    boardStorage.ts               load/save, validating untrusted stored data before use
-  components/kanban/
-    KanbanBoard.tsx               the public component
-    boardMachine.ts               XState machine: interaction modes, celebration, card data
-    boardLogic.ts                 pure board operations (move, add, update, remove, normalize)
-    types.ts                      domain types and default columns
-    CardForm.tsx                  shared create/edit form
-    CharacterPicker.tsx           combobox for choosing a character
+  types.ts                        domain types shared across the app
+  components/
+    kanban/                       the board's React components
+      KanbanBoard.tsx             the public component
+      BoardColumn.tsx, BoardCard.tsx
+      CardForm.tsx                shared create/edit form
+      CharacterPicker.tsx         combobox for choosing a character
+    ui/                           generic pieces: Modal, Confetti, icons, shared class names
+  hooks/
     useCharacterSearch.ts         debounced, cancellable search hook
-    BoardColumn.tsx, BoardCard.tsx, Modal.tsx, Confetti.tsx
+  lib/                            logic with no React in it; never imports components
+    board/
+      boardMachine.ts             XState machine: interaction modes, celebration, card data
+      boardLogic.ts               pure board operations (move, add, update, remove, normalize)
+      columns.ts                  default column definitions
+    api/
+      gql.ts                      generic typed GraphQL-over-fetch helper
+      characters.ts               Rick and Morty adapter implementing SearchCharacters, with a cache
+    storage/
+      boardStorage.ts             load/save, validating untrusted stored data before use
 ```
+
+Each test file sits next to the module it covers.
 
 ### A self-contained component with an injected data source
 
@@ -152,6 +160,13 @@ board (parallel)
   data can't crash the page.
 - Card ids fall back from `crypto.randomUUID`, which only exists on HTTPS or localhost, so the app
   also works when opened over a plain-HTTP LAN address (for example, on a phone).
+- The layout holds up with extreme content and small screens: 80-character titles with no spaces,
+  long character names and 320px-wide viewports all wrap or truncate instead of widening the page.
+  The usual causes are grid tracks and fieldsets that size to their content, and `overflow-wrap:
+  break-word`, which doesn't shrink an element's minimum width (`anywhere` does).
+- Modals scroll when taller than the screen and lock page scrolling while open. When a classic
+  scrollbar is showing, its space is kept so the page doesn't shift sideways; otherwise nothing is
+  reserved.
 
 ## Testing
 
