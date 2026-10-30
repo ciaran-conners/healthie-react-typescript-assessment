@@ -32,10 +32,15 @@ export function CardView({ card, done, celebrating, overlay, handle, actions }: 
           alt=""
           className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10"
         />
-        <div className={`min-w-0 flex-1 ${actions ? 'pointer-coarse:pr-16' : ''}`}>
-          <h3 className={`flex items-center gap-1.5 font-semibold break-words ${done ? 'text-slate-300' : ''}`}>
+        <div className="min-w-0 flex-1">
+          {actions && (
+            // Clears the always-visible touch actions on the first line only.
+            <span aria-hidden="true" className="float-right hidden h-6 w-16 pointer-coarse:block" />
+          )}
+          {/* Block, not flex, and wrap-anywhere (which, unlike break-word, also shrinks min-content width). */}
+          <h3 className={`font-semibold wrap-anywhere ${done ? 'text-slate-300' : ''}`}>
             {done && (
-              <span className="text-portal">
+              <span className="mr-1.5 inline-block align-[-0.125em] text-portal">
                 <CheckIcon />
                 <span className="sr-only">Done:</span>
               </span>
@@ -50,7 +55,7 @@ export function CardView({ card, done, celebrating, overlay, handle, actions }: 
         {actions}
       </div>
       {card.description && (
-        <p className="mt-2 line-clamp-3 pl-6 text-sm whitespace-pre-line text-slate-300">{card.description}</p>
+        <p className="mt-2 line-clamp-3 pl-6 text-sm wrap-anywhere whitespace-pre-line text-slate-300">{card.description}</p>
       )}
     </article>
   )

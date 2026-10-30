@@ -36,14 +36,14 @@ export function BoardColumn({
         isDropTarget ? 'bg-portal/5 ring-portal/50' : 'bg-white/3 ring-white/10'
       }`}
     >
-      <header className="mb-3 flex items-center justify-between px-1">
+      <header className="mb-3 flex items-center justify-between gap-2 px-1">
         <h2
           id={headingId}
-          className={`text-sm font-semibold tracking-wider uppercase ${column.celebrate ? 'text-portal' : 'text-slate-300'}`}
+          className={`min-w-0 text-sm font-semibold tracking-wider wrap-anywhere uppercase ${column.celebrate ? 'text-portal' : 'text-slate-300'}`}
         >
           {column.title}
         </h2>
-        <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
+        <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
           {cards.length}
           <span className="sr-only"> {cards.length === 1 ? 'card' : 'cards'}</span>
         </span>

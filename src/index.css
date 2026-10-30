@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Only stick the form when the window is tall enough to show it with the character list open. */
+@custom-variant tall (@media (min-height: 48rem));
+
 @theme {
   --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   --color-portal: #97ce4c;
@@ -9,6 +12,12 @@
 }
 
 @layer base {
+  html {
+    color-scheme: dark;
+    /* Keeps the layout from shifting when a modal locks page scrolling and the scrollbar goes. */
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-space font-sans text-slate-100 antialiased;
     background-image:

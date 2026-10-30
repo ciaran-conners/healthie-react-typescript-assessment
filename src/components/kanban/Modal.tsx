@@ -25,11 +25,16 @@ export function Modal({ title, onClose, children }: ModalProps) {
       (el) => el !== overlay && !el.hasAttribute('inert'),
     )
     background.forEach((el) => el.setAttribute('inert', ''))
+    // inert doesn't stop wheel/touch scrolling from chaining to the page behind the overlay.
+    const root = document.documentElement
+    const prevOverflow = root.style.overflow
+    root.style.overflow = 'hidden'
     overlay?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
 
     return () => {
       // Focus can't move into an inert subtree, so restore interactivity first.
       background.forEach((el) => el.removeAttribute('inert'))
+      root.style.overflow = prevOverflow
       opener?.focus()
     }
   }, [opener])
@@ -37,14 +42,15 @@ export function Modal({ title, onClose, children }: ModalProps) {
   return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm"
+      // Scrolls when the dialog is taller than the viewport; grid-cols-1 stops wide content widening it.
+      className="fixed inset-0 z-50 grid grid-cols-1 place-items-center overflow-y-auto overscroll-contain bg-black/60 p-4 backdrop-blur-sm"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-2xl bg-slate-900 p-6 shadow-2xl ring-1 ring-white/10"
+        className="w-full max-w-md rounded-2xl bg-slate-900 wrap-anywhere p-6 shadow-2xl ring-1 ring-white/10"
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.stopPropagation()

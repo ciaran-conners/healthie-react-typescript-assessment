@@ -50,7 +50,8 @@ export function CardForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <fieldset disabled={disabled} className="space-y-4">
+      {/* Fieldsets default to min-inline-size: min-content, so a long truncated name would widen the form. */}
+      <fieldset disabled={disabled} className="min-w-0 space-y-4">
         <div className="space-y-1.5">
           <label htmlFor={ids.title} className="text-sm font-medium text-slate-300">
             Title
@@ -100,7 +101,7 @@ export function CardForm({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-1">
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
           {onCancel && (
             <button type="button" onClick={onCancel} className={secondaryButton}>
               Cancel

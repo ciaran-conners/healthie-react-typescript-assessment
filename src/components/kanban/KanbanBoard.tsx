@@ -96,10 +96,10 @@ export function KanbanBoard({
   const cardCount = Object.keys(board.cards).length
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
       <section
         aria-labelledby={formHeadingId}
-        className="rounded-2xl bg-white/3 p-5 ring-1 ring-white/10 lg:sticky lg:top-6"
+        className="rounded-2xl bg-white/3 p-5 ring-1 ring-white/10 lg:tall:sticky lg:tall:top-6"
       >
         <h2 id={formHeadingId} className="mb-4 text-lg font-semibold">
           New card
@@ -126,7 +126,7 @@ export function KanbanBoard({
           onDragCancel={() => send({ type: 'DRAG_CANCEL' })}
         >
           <div
-            className="grid gap-4 md:grid-cols-[repeat(var(--column-count),minmax(0,1fr))]"
+            className="grid grid-cols-1 gap-4 md:grid-cols-[repeat(var(--column-count),minmax(0,1fr))]"
             style={{ '--column-count': columnDefs.length } as CSSProperties}
           >
             {columnDefs.map((column) => (

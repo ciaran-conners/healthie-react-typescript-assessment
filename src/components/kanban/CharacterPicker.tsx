@@ -134,7 +134,10 @@ export function CharacterPicker({
                 >
                   <Avatar character={character} />
                   <span className="min-w-0 flex-1 truncate">{character.name}</span>
-                  {character.species && <span className="text-xs text-slate-400">{character.species}</span>}
+                  {/* Capped so a long species ("Mythological Creature") can't squeeze the name to a few pixels. */}
+                  {character.species && (
+                    <span className="max-w-2/5 truncate text-xs text-slate-400">{character.species}</span>
+                  )}
                 </li>
               ))}
             </ul>
