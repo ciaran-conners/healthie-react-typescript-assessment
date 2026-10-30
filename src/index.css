@@ -14,8 +14,6 @@
 @layer base {
   html {
     color-scheme: dark;
-    /* Keeps the layout from shifting when a modal locks page scrolling and the scrollbar goes. */
-    scrollbar-gutter: stable;
   }
 
   body {

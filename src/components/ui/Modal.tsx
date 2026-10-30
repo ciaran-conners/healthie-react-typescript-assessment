@@ -25,16 +25,19 @@ export function Modal({ title, onClose, children }: ModalProps) {
       (el) => el !== overlay && !el.hasAttribute('inert'),
     )
     background.forEach((el) => el.setAttribute('inert', ''))
-    // inert doesn't stop wheel/touch scrolling from chaining to the page behind the overlay.
+    // inert doesn't stop wheel/touch scrolling from reaching the page behind the overlay. When a
+    // classic scrollbar is showing, keep its gutter so hiding it doesn't shift the page sideways.
     const root = document.documentElement
-    const prevOverflow = root.style.overflow
+    const prev = { overflow: root.style.overflow, scrollbarGutter: root.style.scrollbarGutter }
+    if (window.innerWidth > root.clientWidth) root.style.scrollbarGutter = 'stable'
     root.style.overflow = 'hidden'
     overlay?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
 
     return () => {
       // Focus can't move into an inert subtree, so restore interactivity first.
       background.forEach((el) => el.removeAttribute('inert'))
-      root.style.overflow = prevOverflow
+      root.style.overflow = prev.overflow
+      root.style.scrollbarGutter = prev.scrollbarGutter
       opener?.focus()
     }
   }, [opener])
