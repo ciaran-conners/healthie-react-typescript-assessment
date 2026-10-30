@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
-import { inputClass } from './styles'
-import type { Character, SearchCharacters } from './types'
-import { useCharacterSearch } from './useCharacterSearch'
+import { useCharacterSearch } from '../../hooks/useCharacterSearch'
+import type { Character, SearchCharacters } from '../../types'
+import { inputClass } from '../ui/styles'
 
 interface CharacterPickerProps {
   id: string

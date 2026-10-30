@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import type { BoardData, Card } from '../../types'
 import { addCard, findColumnOf, moveCard, normalizeBoard, removeCard } from './boardLogic'
-import { DEFAULT_COLUMNS, type BoardData, type Card } from './types'
+import { DEFAULT_COLUMNS } from './columns'
 
 const rick = { id: '1', name: 'Rick Sanchez', image: 'rick.png' }
 

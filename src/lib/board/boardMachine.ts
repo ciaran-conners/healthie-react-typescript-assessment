@@ -1,4 +1,5 @@
 import { assign, raise, setup } from 'xstate'
+import type { BoardData, CardId, ColumnDef, ColumnId, CompleteDraft, Point } from '../../types'
 import {
   addCard,
   createId,
@@ -9,7 +10,6 @@ import {
   removeCard,
   updateCard,
 } from './boardLogic'
-import type { BoardData, CardId, ColumnDef, ColumnId, CompleteDraft, Point } from './types'
 
 export interface Celebration {
   cardId: CardId

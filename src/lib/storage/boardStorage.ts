@@ -1,4 +1,4 @@
-import type { BoardData, Card } from '../components/kanban/types'
+import type { BoardData, Card } from '../../types'
 
 const STORAGE_KEY = 'interdimensional-kanban:v1'
 

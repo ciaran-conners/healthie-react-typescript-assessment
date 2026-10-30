@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Character, SearchCharacters } from './types'
+import type { Character, SearchCharacters } from '../types'
 
 interface SettledSearch {
   query: string

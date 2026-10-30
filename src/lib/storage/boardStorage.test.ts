@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { BoardData } from '../components/kanban/types'
+import type { BoardData } from '../../types'
 import { loadBoard, saveBoard } from './boardStorage'
 
 const board: BoardData = {

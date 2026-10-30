@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
+import type { CompleteDraft } from '../../types'
 import { boardMachine, CELEBRATION_MS } from './boardMachine'
-import { DEFAULT_COLUMNS, type CompleteDraft } from './types'
+import { DEFAULT_COLUMNS } from './columns'
 
 const rick = { id: '1', name: 'Rick Sanchez', image: 'rick.png' }
 const draft = (title: string): CompleteDraft => ({ title, description: '', character: rick })

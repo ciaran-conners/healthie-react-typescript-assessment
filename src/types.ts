@@ -44,9 +44,3 @@ export interface Point {
 }
 
 export type SearchCharacters = (query: string, signal: AbortSignal) => Promise<Character[]>
-
-export const DEFAULT_COLUMNS: ColumnDef[] = [
-  { id: 'todo', title: 'To Do' },
-  { id: 'doing', title: 'Doing' },
-  { id: 'done', title: 'Done', celebrate: true },
-]

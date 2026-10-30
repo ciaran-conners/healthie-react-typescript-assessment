@@ -1,8 +1,8 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useId } from 'react'
+import type { Card, CardId, ColumnDef } from '../../types'
 import { SortableCard } from './BoardCard'
-import type { Card, CardId, ColumnDef } from './types'
 
 interface BoardColumnProps {
   column: ColumnDef

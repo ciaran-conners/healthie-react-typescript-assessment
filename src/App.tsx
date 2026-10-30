@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { searchRickAndMorty } from './api/characters'
 import { KanbanBoard } from './components/kanban/KanbanBoard'
-import { loadBoard, saveBoard } from './persistence/boardStorage'
+import { searchRickAndMorty } from './lib/api/characters'
+import { loadBoard, saveBoard } from './lib/storage/boardStorage'
 
 function App() {
   const [initialBoard] = useState(loadBoard)

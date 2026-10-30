@@ -1,8 +1,8 @@
 import { useId, useState, type FormEvent } from 'react'
-import { isCompleteDraft } from './boardLogic'
+import { isCompleteDraft } from '../../lib/board/boardLogic'
+import type { CardDraft, CompleteDraft, SearchCharacters } from '../../types'
+import { inputClass, primaryButton, secondaryButton } from '../ui/styles'
 import { CharacterPicker } from './CharacterPicker'
-import { inputClass, primaryButton, secondaryButton } from './styles'
-import type { CardDraft, CompleteDraft, SearchCharacters } from './types'
 
 const EMPTY_DRAFT: CardDraft = { title: '', description: '', character: null }
 

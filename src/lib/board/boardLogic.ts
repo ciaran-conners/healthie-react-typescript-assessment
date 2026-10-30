@@ -1,4 +1,4 @@
-import type { BoardData, Card, CardDraft, CardId, ColumnDef, ColumnId, CompleteDraft } from './types'
+import type { BoardData, Card, CardDraft, CardId, ColumnDef, ColumnId, CompleteDraft } from '../../types'
 
 // Pure board operations, called from the state machine's actions. Each returns the same
 // reference when nothing changed, which is how the board detects real changes.

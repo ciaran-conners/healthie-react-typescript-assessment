@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import type { Point } from './types'
+import type { Point } from '../../types'
 
 const COLORS = ['#97ce4c', '#f0e14a', '#44c4e6', '#f4a1c9', '#ffffff']
 

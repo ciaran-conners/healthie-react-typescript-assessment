@@ -1,4 +1,4 @@
-import type { Character, SearchCharacters } from '../components/kanban/types'
+import type { Character, SearchCharacters } from '../../types'
 import { gql } from './gql'
 
 const RICK_AND_MORTY_GRAPHQL_URL = 'https://rickandmortyapi.com/graphql'

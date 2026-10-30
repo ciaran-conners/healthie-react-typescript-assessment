@@ -1,8 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { KeyboardEventHandler, MouseEventHandler, ReactNode, TouchEventHandler } from 'react'
-import { CheckIcon, GripIcon, PencilIcon, TrashIcon } from './icons'
-import type { Card } from './types'
+import type { Card } from '../../types'
+import { CheckIcon, GripIcon, PencilIcon, TrashIcon } from '../ui/icons'
 
 interface CardViewProps {
   card: Card

@@ -14,15 +14,16 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useMachine } from '@xstate/react'
 import { useEffect, useEffectEvent, useId, type CSSProperties } from 'react'
-import { BoardColumn } from './BoardColumn'
+import { findColumnOf } from '../../lib/board/boardLogic'
+import { boardMachine } from '../../lib/board/boardMachine'
+import { DEFAULT_COLUMNS } from '../../lib/board/columns'
+import type { BoardData, ColumnDef, Point, SearchCharacters } from '../../types'
+import { Confetti } from '../ui/Confetti'
+import { Modal } from '../ui/Modal'
+import { dangerButton, secondaryButton } from '../ui/styles'
 import { CardView } from './BoardCard'
-import { findColumnOf } from './boardLogic'
-import { boardMachine } from './boardMachine'
+import { BoardColumn } from './BoardColumn'
 import { CardForm } from './CardForm'
-import { Confetti } from './Confetti'
-import { Modal } from './Modal'
-import { dangerButton, secondaryButton } from './styles'
-import { DEFAULT_COLUMNS, type BoardData, type ColumnDef, type Point, type SearchCharacters } from './types'
 
 export interface KanbanBoardProps {
   /** Data source for the character picker; the board is agnostic to the API behind it. */

@@ -1,8 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import type { BoardData, Character, SearchCharacters } from '../../types'
 import { KanbanBoard } from './KanbanBoard'
-import type { BoardData, Character, SearchCharacters } from './types'
 
 const CHARACTERS: Character[] = [
   { id: '1', name: 'Rick Sanchez', image: 'rick.png', species: 'Human' },
