@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid'
 import type { BoardData, Card, CardDraft, CardId, ColumnDef, ColumnId, CompleteDraft } from '../../types'
 
 // Pure board operations, called from the state machine's actions. Each returns the same
@@ -125,9 +126,9 @@ export function toCardFields(draft: CompleteDraft): Pick<Card, 'title' | 'descri
   }
 }
 
-// crypto.randomUUID is only available in secure contexts, so plain-http LAN access needs a fallback.
+// Not crypto.randomUUID: it only exists in secure contexts (HTTPS or localhost), so it breaks when
+// the dev server is opened over a plain-HTTP LAN address. nanoid uses crypto.getRandomValues, which
+// is available everywhere.
 export function createId(): string {
-  return typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  return nanoid()
 }

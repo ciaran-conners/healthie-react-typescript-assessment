@@ -158,8 +158,8 @@ board (parallel)
 - Saved boards are validated card by card before use, and reconciled with the current columns
   (unknown ids are dropped, and cards without a column go to the first one), so old or corrupted
   data can't crash the page.
-- Card ids fall back from `crypto.randomUUID`, which only exists on HTTPS or localhost, so the app
-  also works when opened over a plain-HTTP LAN address (for example, on a phone).
+- Card ids come from `nanoid` rather than `crypto.randomUUID`, which only exists on HTTPS or
+  localhost, so the app also works when opened over a plain-HTTP LAN address (for example, on a phone).
 - The layout holds up with extreme content and small screens: 80-character titles with no spaces,
   long character names and 320px-wide viewports all wrap or truncate instead of widening the page.
   The usual causes are grid tracks and fieldsets that size to their content, and `overflow-wrap:
