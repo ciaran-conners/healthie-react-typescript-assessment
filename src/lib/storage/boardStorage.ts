@@ -55,3 +55,16 @@ export function clearBoard(): void {
   }
 }
 
+/**
+ * Calls `onChange` when another tab saves or clears the board. The browser fires `storage`
+ * events in every other tab of the same origin, never in the tab that wrote. Returns an
+ * unsubscribe function.
+ */
+export function subscribeToOtherTabs(onChange: () => void): () => void {
+  const listener = (event: StorageEvent) => {
+    // A null key means storage was cleared entirely.
+    if (event.key === STORAGE_KEY || event.key === null) onChange()
+  }
+  window.addEventListener('storage', listener)
+  return () => window.removeEventListener('storage', listener)
+}

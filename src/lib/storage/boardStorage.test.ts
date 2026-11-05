@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BoardData } from '../../types'
-import { clearBoard, loadBoard, saveBoard } from './boardStorage'
+import { clearBoard, loadBoard, saveBoard, subscribeToOtherTabs } from './boardStorage'
 
 const KEY = 'interdimensional-kanban:v1'
 
@@ -36,4 +36,18 @@ describe('boardStorage', () => {
   })
 
 
+  it('notifies about other tabs changing the board, and nothing else', () => {
+    const onChange = vi.fn()
+    const unsubscribe = subscribeToOtherTabs(onChange)
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'something-else' }))
+    expect(onChange).not.toHaveBeenCalled()
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+    window.dispatchEvent(new StorageEvent('storage', { key: null }))
+    expect(onChange).toHaveBeenCalledTimes(2)
+
+    unsubscribe()
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
 })

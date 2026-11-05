@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { KanbanBoard } from './components/kanban/KanbanBoard'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { dangerButton, secondaryButton } from './components/ui/styles'
 import { searchRickAndMorty } from './lib/api/characters'
-import { clearBoard, loadBoard, saveBoard } from './lib/storage/boardStorage'
+import { clearBoard, loadBoard, saveBoard, subscribeToOtherTabs } from './lib/storage/boardStorage'
 import type { BoardData } from './types'
 
 function App() {
@@ -11,11 +11,21 @@ function App() {
   // fresh data: `generation` keys the error boundary, which remounts everything inside it.
   const [initialBoard, setInitialBoard] = useState(loadBoard)
   const [generation, setGeneration] = useState(0)
+  // The latest board saved by another tab. Keeps a stale tab from saving an old board over newer work.
+  const [externalBoard, setExternalBoard] = useState<BoardData>()
 
   const remount = (board: BoardData | undefined) => {
     setInitialBoard(board)
+    // A fresh board starts from `board`; a leftover external one would immediately overwrite it.
+    setExternalBoard(undefined)
     setGeneration((g) => g + 1)
   }
+
+  // If another tab cleared the board, sync to an empty one (the board fills in the columns).
+  useEffect(
+    () => subscribeToOtherTabs(() => setExternalBoard(loadBoard() ?? { cards: {}, cardIdsByColumn: {} })),
+    [],
+  )
 
   const clearAndRestart = () => {
     clearBoard()
@@ -51,7 +61,12 @@ function App() {
             </div>
           }
         >
-          <KanbanBoard searchCharacters={searchRickAndMorty} initialBoard={initialBoard} onChange={saveBoard} />
+          <KanbanBoard
+            searchCharacters={searchRickAndMorty}
+            initialBoard={initialBoard}
+            externalBoard={externalBoard}
+            onChange={saveBoard}
+          />
         </ErrorBoundary>
       </main>
     </div>

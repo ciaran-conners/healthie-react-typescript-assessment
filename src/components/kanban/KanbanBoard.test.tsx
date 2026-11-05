@@ -120,6 +120,30 @@ describe('KanbanBoard', () => {
     expect(column('Done').getByText('Saved card')).toBeInTheDocument()
   })
 
+  it("keeps a half-typed edit when another tab's save arrives", async () => {
+    const card = (id: string, title: string) => ({ id, title, description: '', character: CHARACTERS[0], createdAt: 0 })
+    const initialBoard: BoardData = {
+      cards: { a: card('a', 'Being edited') },
+      cardIdsByColumn: { todo: ['a'], doing: [], done: [] },
+    }
+    const user = userEvent.setup()
+    const { rerender } = render(<KanbanBoard searchCharacters={fakeSearch} initialBoard={initialBoard} />)
+
+    await user.click(screen.getByRole('button', { name: 'Edit “Being edited”' }))
+    const title = within(screen.getByRole('dialog')).getByLabelText('Title')
+    await user.clear(title)
+    await user.type(title, 'Half-typed')
+
+    const fromOtherTab: BoardData = {
+      cards: { ...initialBoard.cards, b: card('b', 'Added in another tab') },
+      cardIdsByColumn: { todo: ['a'], doing: ['b'], done: [] },
+    }
+    rerender(<KanbanBoard searchCharacters={fakeSearch} initialBoard={initialBoard} externalBoard={fromOtherTab} />)
+
+    expect(within(screen.getByRole('dialog')).getByLabelText('Title')).toHaveValue('Half-typed')
+    expect(within(screen.getByRole('region', { name: 'Doing' })).getByText('Added in another tab')).toBeInTheDocument()
+  })
+
   it('offers a keyboard-reachable retry when the character search fails', async () => {
     const search = vi
       .fn<SearchCharacters>()

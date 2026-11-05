@@ -26,6 +26,8 @@ export interface BoardContext {
   activeId: CardId | null
   /** Snapshot taken at drag start, restored if the drag is cancelled. */
   boardBeforeDrag: BoardData | null
+  /** A board saved by another tab mid-drag, applied (with the drop replayed onto it) when the drag ends. */
+  pendingBoard: BoardData | null
   editingId: CardId | null
   deletingId: CardId | null
   celebration: Celebration | null
@@ -43,6 +45,8 @@ export type BoardEvent =
   | { type: 'CONFIRM' }
   | { type: 'CANCEL' }
   | { type: 'CELEBRATE'; cardId: CardId; fromColumnId: ColumnId | undefined; origin: Point | null }
+  /** Another tab saved the board. */
+  | { type: 'EXTERNAL_UPDATE'; board: BoardData }
 
 export interface BoardInput {
   columns: ColumnDef[]
@@ -59,6 +63,9 @@ function isCelebrateColumn(columns: ColumnDef[], columnId: string | undefined) {
  * `interaction` holds the mutually exclusive user modes; an event a mode doesn't handle is
  * ignored, which is how e.g. "can't drag while editing" is enforced. `celebration` runs in
  * parallel so the confetti never blocks the next interaction.
+ *
+ * `EXTERNAL_UPDATE` (another tab saved) swaps in the newer board without disturbing whatever the user
+ * is doing here: an open modal stays open, and a drag in progress is replayed onto the newer board.
  *
  * Tags expose those rules to the UI so it can grey out controls without restating them:
  * - `cardActionsLocked`: creating, editing and deleting are unavailable (any non-idle mode).
@@ -78,6 +85,11 @@ export const boardMachine = setup({
     draftIsComplete: ({ event }) => (event.type === 'CREATE' || event.type === 'SAVE') && isCompleteDraft(event.draft),
     hasColumns: ({ context }) => context.columns.length > 0,
     cardExists: ({ context, event }) => 'cardId' in event && event.cardId in context.board.cards,
+    // The card an open modal is about to save or delete has been deleted in another tab.
+    editedCardRemoved: ({ context, event }) =>
+      event.type === 'EXTERNAL_UPDATE' && !!context.editingId && !(context.editingId in event.board.cards),
+    deletedCardRemoved: ({ context, event }) =>
+      event.type === 'EXTERNAL_UPDATE' && !!context.deletingId && !(context.deletingId in event.board.cards),
     // Only a card *arriving* in a celebrate column counts, not one reordered within it.
     arrivedInCelebrateColumn: ({ context, event }) =>
       event.type === 'CELEBRATE' &&
@@ -87,7 +99,11 @@ export const boardMachine = setup({
   // Cleanup runs as the last transition action rather than on `exit`, because exit actions
   // run *before* transition actions and would wipe the ids those transitions need.
   actions: {
-    clearDrag: assign({ activeId: null, boardBeforeDrag: null }),
+    clearDrag: assign({ activeId: null, boardBeforeDrag: null, pendingBoard: null }),
+    applyExternalBoard: assign({
+      board: ({ context, event }) =>
+        event.type === 'EXTERNAL_UPDATE' ? normalizeBoard(context.columns, event.board) : context.board,
+    }),
     clearEditing: assign({ editingId: null }),
     clearDeleting: assign({ deletingId: null }),
   },
@@ -99,6 +115,7 @@ export const boardMachine = setup({
     board: normalizeBoard(input.columns, input.board),
     activeId: null,
     boardBeforeDrag: null,
+    pendingBoard: null,
     editingId: null,
     deletingId: null,
     celebration: null,
@@ -138,6 +155,7 @@ export const boardMachine = setup({
               target: 'confirmingDelete',
               actions: assign({ deletingId: ({ event }) => event.cardId }),
             },
+            EXTERNAL_UPDATE: { actions: 'applyExternalBoard' },
           },
         },
 
@@ -156,12 +174,19 @@ export const boardMachine = setup({
                 },
               }),
             },
+            // Swapping the board mid-drag would yank cards out from under the pointer, so hold it.
+            EXTERNAL_UPDATE: {
+              actions: assign({ pendingBoard: ({ context, event }) => normalizeBoard(context.columns, event.board) }),
+            },
             DRAG_END: {
               target: 'idle',
               actions: [
                 assign({
-                  board: ({ context, event }) =>
-                    event.overId ? moveCard(context.board, context.activeId!, event.overId) : context.board,
+                  // With a pending board, the drop is replayed onto it so neither tab's change is lost.
+                  board: ({ context, event }) => {
+                    const base = context.pendingBoard ?? context.board
+                    return event.overId ? moveCard(base, context.activeId!, event.overId) : base
+                  },
                 }),
                 raise(({ context, event }) => ({
                   type: 'CELEBRATE' as const,
@@ -175,7 +200,7 @@ export const boardMachine = setup({
             DRAG_CANCEL: {
               target: 'idle',
               actions: [
-                assign({ board: ({ context }) => context.boardBeforeDrag ?? context.board }),
+                assign({ board: ({ context }) => context.pendingBoard ?? context.boardBeforeDrag ?? context.board }),
                 'clearDrag',
               ],
             },
@@ -197,6 +222,11 @@ export const boardMachine = setup({
               ],
             },
             CANCEL: { target: 'idle', actions: 'clearEditing' },
+            // The open form keeps its draft; saving then applies it to the newer board.
+            EXTERNAL_UPDATE: [
+              { guard: 'editedCardRemoved', target: 'idle', actions: ['applyExternalBoard', 'clearEditing'] },
+              { actions: 'applyExternalBoard' },
+            ],
           },
         },
 
@@ -211,6 +241,10 @@ export const boardMachine = setup({
               ],
             },
             CANCEL: { target: 'idle', actions: 'clearDeleting' },
+            EXTERNAL_UPDATE: [
+              { guard: 'deletedCardRemoved', target: 'idle', actions: ['applyExternalBoard', 'clearDeleting'] },
+              { actions: 'applyExternalBoard' },
+            ],
           },
         },
       },

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -9,8 +9,16 @@ const KEY = 'interdimensional-kanban:v1'
 // The real board is covered by its own tests. This stub shows the board it was given, can report
 // a change, and crashes on demand, which is all App's wiring needs.
 vi.mock('./components/kanban/KanbanBoard', () => ({
-  KanbanBoard: ({ initialBoard, onChange }: { initialBoard?: BoardData; onChange: (b: BoardData) => void }) => {
-    const titles = Object.values(initialBoard?.cards ?? {}).map((card) => card.title)
+  KanbanBoard: ({
+    initialBoard,
+    externalBoard,
+    onChange,
+  }: {
+    initialBoard?: BoardData
+    externalBoard?: BoardData
+    onChange: (b: BoardData) => void
+  }) => {
+    const titles = Object.values((externalBoard ?? initialBoard)?.cards ?? {}).map((card) => card.title)
     if (titles.includes('Crash')) throw new Error('Board exploded')
     return (
       <div>
@@ -43,6 +51,19 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Change' }))
     expect(JSON.parse(localStorage.getItem(KEY)!).cards.a.title).toBe('Changed')
+  })
+
+  it("passes another tab's save to the board, and an empty board if it was cleared", () => {
+    render(<App />)
+    expect(screen.getByText('Board: empty')).toBeInTheDocument()
+
+    save(boardWith('From another tab'))
+    act(() => window.dispatchEvent(new StorageEvent('storage', { key: KEY })))
+    expect(screen.getByText('Board: From another tab')).toBeInTheDocument()
+
+    localStorage.clear()
+    act(() => window.dispatchEvent(new StorageEvent('storage', { key: null })))
+    expect(screen.getByText('Board: empty')).toBeInTheDocument()
   })
 
   it('shows a fallback instead of a blank page when the board crashes, and can recover', async () => {

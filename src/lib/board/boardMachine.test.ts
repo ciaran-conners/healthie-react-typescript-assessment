@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
-import type { CompleteDraft } from '../../types'
+import type { BoardData, CompleteDraft } from '../../types'
 import { boardMachine, CELEBRATION_MS } from './boardMachine'
 import { DEFAULT_COLUMNS } from './columns'
 
@@ -126,6 +126,82 @@ describe('boardMachine', () => {
     actor.send({ type: 'CONFIRM' })
     expect(columns().todo).toEqual([])
     expect(actor.getSnapshot().context.deletingId).toBeNull()
+  })
+
+  describe('updates from another tab', () => {
+    // What another tab would save: this board's cards, changed by `change`.
+    function externalBoard(actor: ReturnType<typeof startBoard>['actor'], change: (board: BoardData) => BoardData) {
+      return change(structuredClone(actor.getSnapshot().context.board))
+    }
+    const withTitle = (id: string, title: string) => (board: BoardData) => {
+      board.cards[id].title = title
+      return board
+    }
+    const without = (id: string) => (board: BoardData) => {
+      delete board.cards[id]
+      board.cardIdsByColumn.todo = board.cardIdsByColumn.todo.filter((other) => other !== id)
+      return board
+    }
+
+    it('replaces the board when idle, filling in missing columns', () => {
+      const { actor } = startBoard()
+      actor.send({ type: 'EXTERNAL_UPDATE', board: { cards: {}, cardIdsByColumn: {} } })
+      expect(actor.getSnapshot().context.board.cardIdsByColumn).toEqual({ todo: [], doing: [], done: [] })
+    })
+
+    it('keeps an open editor open, and saves onto the newer board', () => {
+      const { actor, create } = startBoard()
+      const edited = create('Being edited')
+      const other = create('Other')
+      actor.send({ type: 'EDIT', cardId: edited })
+      actor.send({ type: 'EXTERNAL_UPDATE', board: externalBoard(actor, withTitle(other, 'Renamed elsewhere')) })
+      expect(actor.getSnapshot().matches({ interaction: 'editing' })).toBe(true)
+
+      actor.send({ type: 'SAVE', draft: draft('Saved here') })
+      const { cards } = actor.getSnapshot().context.board
+      expect(cards[edited].title).toBe('Saved here')
+      expect(cards[other].title).toBe('Renamed elsewhere')
+    })
+
+    it('closes the editor or delete prompt when that card was deleted elsewhere', () => {
+      const { actor, create } = startBoard()
+      const id = create('Gone')
+      actor.send({ type: 'EDIT', cardId: id })
+      actor.send({ type: 'EXTERNAL_UPDATE', board: externalBoard(actor, without(id)) })
+      expect(actor.getSnapshot().matches({ interaction: 'idle' })).toBe(true)
+      expect(actor.getSnapshot().context.editingId).toBeNull()
+
+      const next = create('Also gone')
+      actor.send({ type: 'DELETE', cardId: next })
+      actor.send({ type: 'EXTERNAL_UPDATE', board: externalBoard(actor, without(next)) })
+      expect(actor.getSnapshot().matches({ interaction: 'idle' })).toBe(true)
+      expect(actor.getSnapshot().context.deletingId).toBeNull()
+    })
+
+    it('holds an update until a drag ends, then replays the drop onto it', () => {
+      const { actor, create, columns } = startBoard()
+      const dragged = create('Dragged')
+      const other = create('Other')
+      actor.send({ type: 'DRAG_START', cardId: dragged })
+      actor.send({ type: 'DRAG_OVER', overId: 'doing' })
+      actor.send({ type: 'EXTERNAL_UPDATE', board: externalBoard(actor, withTitle(other, 'Renamed elsewhere')) })
+      // Still mid-drag: the board under the pointer hasn't changed.
+      expect(columns().doing).toEqual([dragged])
+
+      actor.send({ type: 'DRAG_END', overId: 'doing', origin: null })
+      const { board } = actor.getSnapshot().context
+      expect(board.cardIdsByColumn).toMatchObject({ todo: [other], doing: [dragged] })
+      expect(board.cards[other].title).toBe('Renamed elsewhere')
+    })
+
+    it('uses the held update when a drag is cancelled', () => {
+      const { actor, create } = startBoard()
+      const id = create('Dragged')
+      actor.send({ type: 'DRAG_START', cardId: id })
+      actor.send({ type: 'EXTERNAL_UPDATE', board: externalBoard(actor, withTitle(id, 'Renamed elsewhere')) })
+      actor.send({ type: 'DRAG_CANCEL' })
+      expect(actor.getSnapshot().context.board.cards[id].title).toBe('Renamed elsewhere')
+    })
   })
 
   it('tags each mode with the controls it locks', () => {

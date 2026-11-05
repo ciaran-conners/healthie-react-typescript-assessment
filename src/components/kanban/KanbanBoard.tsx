@@ -34,6 +34,11 @@ export interface KanbanBoardProps {
   initialBoard?: BoardData
   /** Receives the full board after each committed change (not on every drag frame). */
   onChange?: (board: BoardData) => void
+  /**
+   * A newer board saved elsewhere (e.g. another tab). Each new value replaces the board without
+   * interrupting the user: an open modal keeps its draft, and a drag in progress is replayed onto it.
+   */
+  externalBoard?: BoardData
 }
 
 function dropOrigin(event: DragEndEvent): Point | null {
@@ -46,6 +51,7 @@ export function KanbanBoard({
   columns = DEFAULT_COLUMNS,
   initialBoard,
   onChange,
+  externalBoard,
 }: KanbanBoardProps) {
   const [snapshot, send, actorRef] = useMachine(boardMachine, { input: { columns, board: initialBoard } })
   const { board, activeId, editingId, deletingId, celebration } = snapshot.context
@@ -56,8 +62,13 @@ export function KanbanBoard({
   const cardActionsLocked = snapshot.hasTag('cardActionsLocked')
   const dragLocked = snapshot.hasTag('dragLocked')
 
+  useEffect(() => {
+    if (externalBoard) send({ type: 'EXTERNAL_UPDATE', board: externalBoard })
+  }, [externalBoard, send])
+
   // Mid-drag previews aren't emitted, and a cancelled drag restores the original reference,
-  // so only committed changes reach onChange.
+  // so only committed changes reach onChange. An external board is reported too: saving it
+  // back writes the same value, which storage treats as a no-op.
   const emitChange = useEffectEvent((next: BoardData) => onChange?.(next))
   useEffect(() => {
     let last = actorRef.getSnapshot().context.board
