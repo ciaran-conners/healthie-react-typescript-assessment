@@ -51,6 +51,7 @@ npm run dev          # http://localhost:5173
 | Drag and drop | `@dnd-kit/core` + `@dnd-kit/sortable` | Headless, with mouse, touch and keyboard sensors and screen-reader announcements; the app owns the data |
 | State | XState v5 | The board has mutually exclusive modes (see below) |
 | Data fetching | `fetch` + a small typed `gql()` helper | A single read-only query; a GraphQL client's cache would compete with the machine as a source of truth |
+| Ids | `nanoid` | Tiny, and unlike `crypto.randomUUID` it works outside secure contexts |
 | Styling | Tailwind CSS v4 | |
 | Celebration | Pure CSS keyframes | No dependency; respects `prefers-reduced-motion` |
 | Tests | Vitest + React Testing Library | |
@@ -125,6 +126,11 @@ board (parallel)
 
 - **Celebration runs in parallel**, so the confetti never blocks the next interaction. Reordering
   within Done doesn't celebrate again.
+- **The UI asks the machine what's locked instead of re-deriving it.** States carry tags
+  (`cardActionsLocked` while dragging or in a modal, `dragLocked` while a modal is open), and the
+  component reads `snapshot.hasTag(...)` to disable controls.
+- **Guards are named** (`cardExists`, `draftIsComplete`, `arrivedInCelebrateColumn`, …) and registered
+  in `setup`, so each transition reads as a rule rather than an inline expression.
 - **The machine decides *when*, `boardLogic.ts` decides *what*.** Card data lives in the machine's
   context, but every change to it goes through a pure function, so the logic can be unit-tested
   without the machine.
