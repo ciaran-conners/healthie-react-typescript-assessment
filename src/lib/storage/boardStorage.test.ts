@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BoardData } from '../../types'
-import { loadBoard, saveBoard } from './boardStorage'
+import { clearBoard, loadBoard, saveBoard } from './boardStorage'
+
+const KEY = 'interdimensional-kanban:v1'
 
 const board: BoardData = {
   cards: {
@@ -11,6 +13,7 @@ const board: BoardData = {
 
 describe('boardStorage', () => {
   beforeEach(() => localStorage.clear())
+  afterEach(() => vi.restoreAllMocks())
 
   it('round-trips a board', () => {
     saveBoard(board)
@@ -18,11 +21,19 @@ describe('boardStorage', () => {
   })
 
   it('rejects malformed or corrupted data instead of crashing', () => {
-    localStorage.setItem('interdimensional-kanban:v1', '{not json')
+    localStorage.setItem(KEY, '{not json')
     expect(loadBoard()).toBeUndefined()
 
     const corrupted = { ...board, cards: { a: { ...board.cards.a, character: null } } }
-    localStorage.setItem('interdimensional-kanban:v1', JSON.stringify(corrupted))
+    localStorage.setItem(KEY, JSON.stringify(corrupted))
     expect(loadBoard()).toBeUndefined()
   })
+
+  it('clears the saved board', () => {
+    saveBoard(board)
+    clearBoard()
+    expect(loadBoard()).toBeUndefined()
+  })
+
+
 })

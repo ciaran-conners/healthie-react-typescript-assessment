@@ -46,3 +46,12 @@ export function saveBoard(board: BoardData): void {
     // Full or blocked storage (e.g. private mode) shouldn't break the board; it keeps working in memory.
   }
 }
+
+export function clearBoard(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Nothing to clear if storage is blocked.
+  }
+}
+
