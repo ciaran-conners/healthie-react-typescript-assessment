@@ -127,4 +127,25 @@ describe('boardMachine', () => {
     expect(columns().todo).toEqual([])
     expect(actor.getSnapshot().context.deletingId).toBeNull()
   })
+
+  it('tags each mode with the controls it locks', () => {
+    const { actor, create } = startBoard()
+    const id = create('Tagged')
+    const locks = () => ({
+      cardActions: actor.getSnapshot().hasTag('cardActionsLocked'),
+      drag: actor.getSnapshot().hasTag('dragLocked'),
+    })
+    expect(locks()).toEqual({ cardActions: false, drag: false })
+
+    actor.send({ type: 'DRAG_START', cardId: id })
+    expect(locks()).toEqual({ cardActions: true, drag: false })
+    actor.send({ type: 'DRAG_CANCEL' })
+
+    actor.send({ type: 'EDIT', cardId: id })
+    expect(locks()).toEqual({ cardActions: true, drag: true })
+    actor.send({ type: 'CANCEL' })
+
+    actor.send({ type: 'DELETE', cardId: id })
+    expect(locks()).toEqual({ cardActions: true, drag: true })
+  })
 })

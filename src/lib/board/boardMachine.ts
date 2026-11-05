@@ -1,4 +1,4 @@
-import { assign, raise, setup } from 'xstate'
+import { and, assign, raise, setup } from 'xstate'
 import type { BoardData, CardId, ColumnDef, ColumnId, CompleteDraft, Point } from '../../types'
 import {
   addCard,
@@ -8,6 +8,7 @@ import {
   moveCard,
   normalizeBoard,
   removeCard,
+  toCardFields,
   updateCard,
 } from './boardLogic'
 
@@ -58,15 +59,30 @@ function isCelebrateColumn(columns: ColumnDef[], columnId: string | undefined) {
  * `interaction` holds the mutually exclusive user modes; an event a mode doesn't handle is
  * ignored, which is how e.g. "can't drag while editing" is enforced. `celebration` runs in
  * parallel so the confetti never blocks the next interaction.
+ *
+ * Tags expose those rules to the UI so it can grey out controls without restating them:
+ * - `cardActionsLocked`: creating, editing and deleting are unavailable (any non-idle mode).
+ * - `dragLocked`: a modal is open, so cards can't be picked up.
  */
 export const boardMachine = setup({
   types: {
     context: {} as BoardContext,
     events: {} as BoardEvent,
     input: {} as BoardInput,
+    tags: {} as 'cardActionsLocked' | 'dragLocked',
   },
   delays: {
     celebrationDuration: CELEBRATION_MS,
+  },
+  guards: {
+    draftIsComplete: ({ event }) => (event.type === 'CREATE' || event.type === 'SAVE') && isCompleteDraft(event.draft),
+    hasColumns: ({ context }) => context.columns.length > 0,
+    cardExists: ({ context, event }) => 'cardId' in event && event.cardId in context.board.cards,
+    // Only a card *arriving* in a celebrate column counts, not one reordered within it.
+    arrivedInCelebrateColumn: ({ context, event }) =>
+      event.type === 'CELEBRATE' &&
+      isCelebrateColumn(context.columns, findColumnOf(context.board, event.cardId)) &&
+      !isCelebrateColumn(context.columns, event.fromColumnId),
   },
   // Cleanup runs as the last transition action rather than on `exit`, because exit actions
   // run *before* transition actions and would wipe the ids those transitions need.
@@ -94,24 +110,18 @@ export const boardMachine = setup({
         idle: {
           on: {
             CREATE: {
-              guard: ({ event, context }) => isCompleteDraft(event.draft) && context.columns.length > 0,
+              guard: and(['draftIsComplete', 'hasColumns']),
               actions: assign({
                 board: ({ context, event }) =>
                   addCard(
                     context.board,
-                    {
-                      id: createId(),
-                      title: event.draft.title.trim(),
-                      description: event.draft.description.trim(),
-                      character: event.draft.character,
-                      createdAt: Date.now(),
-                    },
+                    { id: createId(), ...toCardFields(event.draft), createdAt: Date.now() },
                     context.columns[0].id,
                   ),
               }),
             },
             DRAG_START: {
-              guard: ({ context, event }) => event.cardId in context.board.cards,
+              guard: 'cardExists',
               target: 'dragging',
               actions: assign({
                 activeId: ({ event }) => event.cardId,
@@ -119,12 +129,12 @@ export const boardMachine = setup({
               }),
             },
             EDIT: {
-              guard: ({ context, event }) => event.cardId in context.board.cards,
+              guard: 'cardExists',
               target: 'editing',
               actions: assign({ editingId: ({ event }) => event.cardId }),
             },
             DELETE: {
-              guard: ({ context, event }) => event.cardId in context.board.cards,
+              guard: 'cardExists',
               target: 'confirmingDelete',
               actions: assign({ deletingId: ({ event }) => event.cardId }),
             },
@@ -132,6 +142,7 @@ export const boardMachine = setup({
         },
 
         dragging: {
+          tags: ['cardActionsLocked'],
           on: {
             // Only cross-column moves are applied live; dnd-kit animates in-column
             // reordering itself, and that is committed on drop.
@@ -172,18 +183,15 @@ export const boardMachine = setup({
         },
 
         editing: {
+          tags: ['cardActionsLocked', 'dragLocked'],
           on: {
             SAVE: {
-              guard: ({ event }) => isCompleteDraft(event.draft),
+              guard: 'draftIsComplete',
               target: 'idle',
               actions: [
                 assign({
                   board: ({ context, event }) =>
-                    updateCard(context.board, context.editingId!, {
-                      title: event.draft.title.trim(),
-                      description: event.draft.description.trim(),
-                      character: event.draft.character,
-                    }),
+                    updateCard(context.board, context.editingId!, toCardFields(event.draft)),
                 }),
                 'clearEditing',
               ],
@@ -193,6 +201,7 @@ export const boardMachine = setup({
         },
 
         confirmingDelete: {
+          tags: ['cardActionsLocked', 'dragLocked'],
           on: {
             CONFIRM: {
               target: 'idle',
@@ -210,11 +219,9 @@ export const boardMachine = setup({
     celebration: {
       initial: 'quiet',
       on: {
-        // Raised on every drop; only a card *arriving* in a celebrate column counts.
+        // Raised on every drop; the guard filters it down to arrivals in Done.
         CELEBRATE: {
-          guard: ({ context, event }) =>
-            isCelebrateColumn(context.columns, findColumnOf(context.board, event.cardId)) &&
-            !isCelebrateColumn(context.columns, event.fromColumnId),
+          guard: 'arrivedInCelebrateColumn',
           target: '.celebrating',
           reenter: true,
           actions: assign({

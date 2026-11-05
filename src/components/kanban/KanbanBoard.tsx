@@ -52,10 +52,9 @@ export function KanbanBoard({
   const columnDefs = snapshot.context.columns
   const formHeadingId = useId()
 
-  const isIdle = snapshot.matches({ interaction: 'idle' })
   const isDragging = snapshot.matches({ interaction: 'dragging' })
-  // Modals lock dragging; a drag in progress only locks the card actions.
-  const dragLocked = !isIdle && !isDragging
+  const cardActionsLocked = snapshot.hasTag('cardActionsLocked')
+  const dragLocked = snapshot.hasTag('dragLocked')
 
   // Mid-drag previews aren't emitted, and a cancelled drag restores the original reference,
   // so only committed changes reach onChange.
@@ -110,7 +109,7 @@ export function KanbanBoard({
           searchCharacters={searchCharacters}
           onSubmit={(draft) => send({ type: 'CREATE', draft })}
           resetOnSubmit
-          disabled={!isIdle}
+          disabled={cardActionsLocked}
         />
       </section>
 
@@ -138,7 +137,7 @@ export function KanbanBoard({
                 isDropTarget={isDragging && !!activeId && board.cardIdsByColumn[column.id].includes(activeId)}
                 celebratingCardId={celebration?.cardId ?? null}
                 dragDisabled={dragLocked}
-                actionsDisabled={!isIdle}
+                actionsDisabled={cardActionsLocked}
                 onEdit={(cardId) => send({ type: 'EDIT', cardId })}
                 onDelete={(cardId) => send({ type: 'DELETE', cardId })}
               />

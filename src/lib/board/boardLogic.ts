@@ -116,6 +116,15 @@ export function isCompleteDraft(draft: CardDraft): draft is CompleteDraft {
   return draft.title.trim().length > 0 && draft.character !== null
 }
 
+/** The user-editable fields of a card, cleaned up from a form draft. */
+export function toCardFields(draft: CompleteDraft): Pick<Card, 'title' | 'description' | 'character'> {
+  return {
+    title: draft.title.trim(),
+    description: draft.description.trim(),
+    character: draft.character,
+  }
+}
+
 // crypto.randomUUID is only available in secure contexts, so plain-http LAN access needs a fallback.
 export function createId(): string {
   return typeof crypto.randomUUID === 'function'
