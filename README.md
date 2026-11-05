@@ -41,7 +41,7 @@ npm run dev          # http://localhost:5173
   still scrolls. With the keyboard, focus the grip handle, press Space to pick it up, use the arrow keys
   to move it, Space to drop and Escape to cancel.
 - **Edit or delete** a card with the buttons that appear on hover or focus (always visible on touch).
-- The board is saved to `localStorage` and restored on reload.
+- The board is saved to `localStorage`, restored on reload and kept in sync across open tabs.
 
 ## Stack
 
@@ -49,8 +49,8 @@ npm run dev          # http://localhost:5173
 | --- | --- | --- |
 | Build | Vite | No backend needed, so no framework overhead |
 | Drag and drop | `@dnd-kit/core` + `@dnd-kit/sortable` | Headless, with mouse, touch and keyboard sensors and screen-reader announcements; the app owns the data |
-| State | XState v5 | The board has mutually exclusive modes (see below) |
-| Data fetching | `fetch` + a small typed `gql()` helper | A single read-only query; a GraphQL client's cache would compete with the machine as a source of truth |
+| State | XState v5 | Mutually exclusive modes plus a parallel celebration with a timer, all outside React (see below) |
+| Data fetching | `fetch` + a small typed `gql()` helper | One read-only query; a GraphQL client would add a dependency and a cache for a single request |
 | Ids | `nanoid` | Tiny, and unlike `crypto.randomUUID` it works outside secure contexts |
 | Styling | Tailwind CSS v4 | |
 | Celebration | Pure CSS keyframes | No dependency; respects `prefers-reduced-motion` |
@@ -60,7 +60,8 @@ npm run dev          # http://localhost:5173
 
 ```
 src/
-  App.tsx                         connects the board to the API adapter and localStorage
+  App.tsx                         connects the board to the API adapter and localStorage, and holds
+                                  the crash fallback
   types.ts                        domain types shared across the app
   components/
     kanban/                       the board's React components
@@ -68,7 +69,7 @@ src/
       BoardColumn.tsx, BoardCard.tsx
       CardForm.tsx                shared create/edit form
       CharacterPicker.tsx         combobox for choosing a character
-    ui/                           generic pieces: Modal, Confetti, icons, shared class names
+    ui/                           generic pieces: Modal, ErrorBoundary, Confetti, icons, shared class names
   hooks/
     useCharacterSearch.ts         debounced, cancellable search hook
   lib/                            logic with no React in it; never imports components
@@ -92,25 +93,29 @@ Each test file sits next to the module it covers.
   searchCharacters={searchRickAndMorty} // (query, signal) => Promise<Character[]>
   initialBoard={loadBoard()}            // optional, read once (like defaultValue)
   onChange={saveBoard}                  // optional, receives the full board after each committed change
+  externalBoard={boardFromAnotherTab}   // optional, a newer board saved elsewhere
   columns={DEFAULT_COLUMNS}             // optional, read once
 />
 ```
 
 The board owns its interaction state and knows nothing about Rick and Morty, GraphQL or localStorage.
-That keeps it testable (tests pass a fake `searchCharacters`, so there's no network mocking), and it
-means "use a different API" or "persist to a server" is a change of props, not of the component.
+That keeps it testable (tests pass a fake `searchCharacters`, so there's no network mocking), and
+switching to a different character API is a change of props, not of the component.
 
 The board is **uncontrolled**: it starts from `initialBoard` and reports changes through `onChange`.
-`onChange` always sends the *full* board, never a diff, and only for committed changes: not on every
-frame of a drag, and not for a drag that was cancelled. Sending the full board is deliberate. A future
-controlled mode (`cards` + `onChange`, where the parent owns the data) can reuse the same contract,
-so adding it doesn't require a rewrite.
+`onChange` sends the *full* board, and only for committed changes: not on every frame of a drag, and
+not for a drag that was cancelled. For localStorage, the full board is the simplest correct option:
+each save replaces what's stored, so storage can't drift from the screen. A backend would want
+individual changes instead (see the last section).
 
 ### Why a state machine
 
 The board's modes rule each other out: you can't drag while editing, edit while dragging, or create
-while confirming a delete. With a reducer that's a set of booleans and hand-written guards. With the
-machine, an event the current state doesn't handle is simply ignored.
+while confirming a delete. A `useReducer` with a discriminated union could model that too, so XState
+isn't strictly necessary here. I chose it because the rest of the behaviour also lives in the machine
+rather than in components and effects: the celebration runs in parallel with whatever you're doing,
+its timer is part of the machine, the UI's locks are declared on the states, and the chart below
+reads as a spec. An event the current state doesn't handle is simply ignored.
 
 ```
 board (parallel)
@@ -124,6 +129,9 @@ board (parallel)
     └── celebrating       after 1.8s → quiet
 ```
 
+Every interaction state also handles `EXTERNAL_UPDATE`, a board saved by another tab (see
+Robustness).
+
 - **Celebration runs in parallel**, so the confetti never blocks the next interaction. Reordering
   within Done doesn't celebrate again.
 - **The UI asks the machine what's locked instead of re-deriving it.** States carry tags
@@ -134,6 +142,10 @@ board (parallel)
 - **The machine decides *when*, `boardLogic.ts` decides *what*.** Card data lives in the machine's
   context, but every change to it goes through a pure function, so the logic can be unit-tested
   without the machine.
+- **The machine and `boardLogic` have no DOM dependencies.** The machine tests run without rendering
+  anything, and the logic would carry over to another view layer such as React Native. The drag
+  events follow dnd-kit's shape (a drop target can be a card or a column), so a different drag library
+  would need a small adapter.
 - **One XState detail worth knowing:** exit actions run *before* transition actions. So cleanup (such
   as clearing `editingId`) happens at the end of each transition rather than on exit, where it would
   wipe values the transition still needs.
@@ -163,7 +175,14 @@ board (parallel)
 
 - Saved boards are validated card by card before use, and reconciled with the current columns
   (unknown ids are dropped, and cards without a column go to the first one), so old or corrupted
-  data can't crash the page.
+  data is caught before it reaches the UI.
+- As a backstop, an error boundary around the board replaces a blank page with a fallback. "Try
+  again" remounts it; if saved data somehow keeps crashing it, "Clear saved board" breaks the loop
+  without anyone needing devtools.
+- Open tabs stay in sync, so a forgotten tab can't save an old board over newer work. When another
+  tab saves, the board swaps in the new data without interrupting what you're doing here: an open
+  edit keeps its half-typed draft (and is closed only if that card was deleted elsewhere), and a drag
+  in progress is replayed onto the newer board when you drop.
 - Card ids come from `nanoid` rather than `crypto.randomUUID`, which only exists on HTTPS or
   localhost, so the app also works when opened over a plain-HTTP LAN address (for example, on a phone).
 - The layout holds up with extreme content and small screens: 80-character titles with no spaces,
@@ -182,20 +201,31 @@ npm test -- --run
 
 - **`boardLogic.test.ts`:** moving, reordering, dropping onto empty columns and normalizing saved data.
 - **`boardMachine.test.ts`:** each mode and transition, including the actions each mode must ignore
-  (e.g. editing while dragging), cancel restoring the board, and when a celebration should and
-  shouldn't fire.
+  (e.g. editing while dragging), cancel restoring the board, when a celebration should and shouldn't
+  fire, the locks each mode declares, and how each mode handles another tab's save.
 - **`KanbanBoard.test.tsx`:** the UI with a fake character search: creating, validating, editing,
-  deleting, focus handling in modals, the focus trap, restoring a saved board and retrying a failed
-  search.
-- **`boardStorage.test.ts`:** saving and loading, and rejecting malformed or corrupted data.
+  deleting, focus handling in modals, the focus trap, restoring a saved board, keeping a half-typed
+  edit when another tab saves, and retrying a failed search.
+- **`boardStorage.test.ts`:** saving, loading, clearing, rejecting malformed or corrupted data, and
+  reacting only to other tabs' changes to the board.
+- **`App.test.tsx`:** the wiring around the board, with the board stubbed out: starting from saved
+  data, saving changes, passing on another tab's save, and recovering from a crash.
 
-The drag gestures themselves aren't reliable to simulate in jsdom, so the move logic is tested
-through the machine and `boardLogic`, and mouse, touch and keyboard dragging were checked by hand in
-a real browser.
+jsdom doesn't do layout, and dnd-kit needs element positions to find drop targets, so drag gestures
+can't be tested there. The move logic is tested through the machine and `boardLogic`, and mouse,
+touch and keyboard dragging were checked by hand in a real browser.
 
 ## Trade-offs and possible next steps
 
-- **Controlled mode** (`cards` prop) for parent-owned state, undo/redo or server sync.
+- **No automated drag test.** Playwright in CI would cover the gestures in a real browser: mouse and
+  keyboard through its normal APIs. Touch is harder: Playwright's touchscreen API only taps, so a
+  long-press drag needs raw touch input through Chromium's DevTools protocol.
+- **Failed saves are silent.** If storage is full or blocked, the board keeps working in memory but
+  won't survive a reload. With a backend, the board would send individual changes rather than the
+  whole board, with retries and rollback of optimistic updates, which suit failures that are
+  temporary rather than permanent.
+- **Controlled mode** (`board` prop) for parent-owned state, such as undo/redo or server state held in
+  a query cache, with the board reporting individual changes rather than the whole board.
 - **The character picker shows the first page of results** (20 per query). Pagination or infinite
   scroll would fit in the adapter, which is also where TanStack Query would go if caching needs grew.
 - **The search cache is unbounded.** That's fine for one session of name searches, but it would want
